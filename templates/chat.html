@@ -1,0 +1,899 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tire Sales Assistant - Living Form</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #f5f5f5;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chat-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+
+        .chat-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .chat-header h1 {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+
+        .chat-header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+
+        .cost-tracker {
+            background: rgba(255,255,255,0.1);
+            padding: 10px;
+            margin-top: 10px;
+            border-radius: 5px;
+            font-size: 12px;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: #f8f9fa;
+        }
+
+        .message {
+            margin-bottom: 20px;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+        }
+
+        .message.user {
+            flex-direction: row-reverse;
+        }
+
+        .message-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+            font-size: 14px;
+        }
+
+        .message.user .message-avatar {
+            background: #667eea;
+        }
+
+        .message.assistant .message-avatar {
+            background: #764ba2;
+        }
+
+        .message-content {
+            max-width: 70%;
+            padding: 15px;
+            border-radius: 18px;
+            position: relative;
+        }
+
+        .message.user .message-content {
+            background: #667eea;
+            color: white;
+            border-bottom-right-radius: 8px;
+        }
+
+        .message.assistant .message-content {
+            background: white;
+            color: #333;
+            border: 1px solid #e1e5e9;
+            border-bottom-left-radius: 8px;
+        }
+
+        .message-info {
+            font-size: 11px;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .message.user .message-info {
+            color: rgba(255,255,255,0.8);
+        }
+
+        /* Living Form Styles */
+        .living-form {
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 15px;
+            transition: all 0.3s ease;
+        }
+
+        .living-form:hover {
+            border-color: #667eea;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.1);
+        }
+
+        .living-form.novice-level {
+            border-color: #28a745;
+            background: #f8fff9;
+        }
+
+        .living-form.expert-level {
+            border-color: #dc3545;
+            background: #fff8f8;
+        }
+
+        .living-form.intermediate-level {
+            border-color: #ffc107;
+            background: #fffef8;
+        }
+
+        .form-header h3 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+
+        .form-header .help-text {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 15px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #333;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .help-tooltip {
+            position: relative;
+            display: inline-block;
+            margin-left: 5px;
+        }
+
+        .help-icon {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #667eea;
+            color: white;
+            text-align: center;
+            font-size: 12px;
+            line-height: 16px;
+            cursor: help;
+        }
+
+        .help-examples {
+            margin-top: 5px;
+            padding: 8px;
+            background: #e3f2fd;
+            border-radius: 4px;
+            font-size: 12px;
+            color: #1976d2;
+        }
+
+        .help-guide {
+            margin-top: 8px;
+            padding: 10px;
+            background: #fff3e0;
+            border-left: 4px solid #ff9800;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        .radio-group, .checkbox-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .radio-option, .checkbox-option {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            padding: 8px 12px;
+            border-radius: 6px;
+            transition: background-color 0.2s ease;
+            border: 1px solid #e1e5e9;
+        }
+
+        .radio-option:hover, .checkbox-option:hover {
+            background: #f8f9fa;
+            border-color: #667eea;
+        }
+
+        .radio-label, .checkbox-label {
+            font-weight: 500;
+            color: #333;
+        }
+
+        .radio-option small, .checkbox-option small {
+            display: block;
+            margin-top: 4px;
+            color: #666;
+        }
+
+        /* Budget form styling */
+        .budget-input {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .budget-options {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .budget-option {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            padding: 10px 15px;
+            border-radius: 8px;
+            border: 2px solid #e1e5e9;
+            transition: all 0.2s ease;
+            background: white;
+        }
+
+        .budget-option:hover {
+            border-color: #667eea;
+            background: #f8f9fa;
+        }
+
+        .budget-option input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            margin: 0;
+            cursor: pointer;
+        }
+
+        .checkbox-option input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            margin: 0;
+            cursor: pointer;
+        }
+
+        /* Clear selection button styling */
+        .clear-selection {
+            margin-top: 10px;
+            text-align: center;
+        }
+
+        .clear-selection button {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+
+        .clear-selection button:hover {
+            background: #5a6268;
+        }
+
+        .budget-label {
+            font-weight: 500;
+            color: #333;
+        }
+
+        .budget-range {
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #e1e5e9;
+        }
+
+        .budget-range label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #333;
+        }
+
+        .range-inputs {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .range-inputs input {
+            width: 80px;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            text-align: center;
+        }
+
+        .range-inputs span {
+            color: #666;
+            font-weight: 500;
+        }
+
+        /* Custom usage textarea styling */
+        .custom-usage {
+            margin-top: 15px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #e1e5e9;
+        }
+
+        .custom-usage label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #333;
+        }
+
+        .custom-usage textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-family: inherit;
+            font-size: 14px;
+            resize: vertical;
+            min-height: 50px;
+        }
+
+        .custom-usage textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .inline-form-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .inline-form-group input {
+            flex: 1;
+            min-width: 120px;
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid #e9ecef;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .btn-primary:hover {
+            background: #5a6fd8;
+        }
+
+        .btn-secondary {
+            background: #6f42c1;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            margin-left: 10px;
+        }
+
+        .btn-secondary:hover {
+            background: #5a2d91;
+        }
+
+        .btn-help {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .btn-help:hover {
+            background: #218838;
+        }
+
+        .flexibility-note {
+            background: #e7f3ff;
+            border: 1px solid #b3d9ff;
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 15px;
+            font-size: 14px;
+            color: #0066cc;
+        }
+
+        .skip-note {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            padding: 10px;
+            margin-top: 15px;
+            font-size: 13px;
+            color: #666;
+            text-align: center;
+        }
+
+        /* Input Area */
+        .chat-input {
+            background: white;
+            border-top: 1px solid #e1e5e9;
+            padding: 20px;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+            align-items: flex-end;
+        }
+
+        .input-group input {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #e9ecef;
+            border-radius: 25px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.3s ease;
+        }
+
+        .input-group input:focus {
+            border-color: #667eea;
+        }
+
+        .input-group button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 25px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .input-group button:hover {
+            background: #5a6fd8;
+        }
+
+        .input-group button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        /* Loading indicator */
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Responsive design */
+        @media (max-width: 600px) {
+            .chat-container {
+                height: 100vh;
+                max-width: 100%;
+                border-radius: 0;
+            }
+
+            .message-content {
+                max-width: 85%;
+            }
+
+            .inline-form-group {
+                flex-direction: column;
+            }
+
+            .form-actions {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">
+            <h1>🚗 Tire Sales Assistant</h1>
+            <p>Your intelligent guide to finding the perfect tires</p>
+            <div class="cost-tracker">
+                <div>💰 Session Cost: $<span id="session-cost">0.00</span></div>
+                <div>🔧 Interactions: <span id="interaction-count">0</span></div>
+            </div>
+        </div>
+
+        <div class="main-form-area" id="main-form-area">
+            <!-- The living form and inline guidance will be rendered here -->
+        </div>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Processing your request...</p>
+        </div>
+    </div>
+
+    <script>
+        class LivingFormApp {
+            constructor() {
+                this.sessionId = this.generateSessionId();
+                this.messageCount = 0;
+                this.sessionCost = 0.00;
+                this.initializeElements();
+                this.setupEventListeners();
+                this.loadFirstForm();
+            }
+
+            generateSessionId() {
+                return 'session_' + Math.random().toString(36).substr(2, 9);
+            }
+
+            initializeElements() {
+                this.mainFormArea = document.getElementById('main-form-area');
+                this.loading = document.getElementById('loading');
+                this.sessionCostElement = document.getElementById('session-cost');
+                this.interactionCountElement = document.getElementById('interaction-count');
+                this.conversationHistory = [];
+            }
+
+            setupEventListeners() {
+                // Remove existing listeners to prevent duplicates
+                if (this.formSubmitHandler) {
+                    document.removeEventListener('submit', this.formSubmitHandler);
+                }
+                
+                // Create bound handler
+                this.formSubmitHandler = (e) => {
+                    if (e.target.closest('form')) {
+                        e.preventDefault();
+                        this.handleFormSubmission(e.target);
+                    }
+                };
+                
+                document.addEventListener('submit', this.formSubmitHandler);
+            }
+
+            async loadFirstForm() {
+                // Load the preset welcome message with initial form - no loading needed since it's predetermined
+                try {
+                    const response = await fetch('/welcome');
+                    if (!response.ok) {
+                        throw new Error(`API error: ${response.status}`);
+                    }
+                    const welcomeData = await response.json();
+                    this.renderForm(welcomeData, true);
+                    this.updateCostTracker(welcomeData.cost_info);
+                } catch (error) {
+                    this.renderError('Sorry, I encountered an error loading the welcome form. Please try again.');
+                    console.error('Initial form load error:', error);
+                }
+            }
+
+            async handleFormSubmission(form) {
+                // Prevent multiple submissions
+                if (form.dataset.submitting === 'true') {
+                    return;
+                }
+                form.dataset.submitting = 'true';
+                
+                const formData = new FormData(form);
+                const formObject = {};
+                let hasAnyInput = false;
+                
+                formData.forEach((value, key) => {
+                    if (formObject[key]) {
+                        if (Array.isArray(formObject[key])) {
+                            formObject[key].push(value);
+                        } else {
+                            formObject[key] = [formObject[key], value];
+                        }
+                    } else {
+                        formObject[key] = value;
+                    }
+                    
+                    // Check if this field has meaningful input
+                    if (value && value.trim() && value.trim() !== '') {
+                        hasAnyInput = true;
+                    }
+                });
+                
+                console.log('Form data being submitted:', formObject);
+                console.log('Has any input:', hasAnyInput);
+                
+                // No validation required - AI will handle partial submissions and ask for what's needed
+                
+                // Disable the current form and add new response below
+                this.disableCurrentForm(formObject);
+                
+                this.showLoading();
+                try {
+                    const response = await this.callChatAPI('Form submission', formObject);
+                    this.hideLoading();
+                    this.addNewFormBelow(response);
+                    this.updateCostTracker(response.cost_info);
+                } catch (error) {
+                    this.hideLoading();
+                    this.renderError('Sorry, I encountered an error processing your form. Please try again.');
+                    console.error('Form submission error:', error);
+                } finally {
+                    form.dataset.submitting = 'false';
+                }
+            }
+
+            async callChatAPI(message, formData = null) {
+                const response = await fetch('/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        message: message,
+                        session_id: this.sessionId,
+                        form_data: formData
+                    })
+                });
+                if (!response.ok) {
+                    throw new Error(`API error: ${response.status}`);
+                }
+                return await response.json();
+            }
+
+            renderForm(response, isInitial = false) {
+                // Only used for initial form - replaces content
+                let html = '';
+                
+                // Show inline guidance if present
+                if (response.inline_guidance) {
+                    html += `<div class="inline-guidance" style="background:#fff3cd;border:1px solid #ffeeba;padding:12px 18px;border-radius:8px;color:#856404;margin-bottom:18px;font-size:15px;">${response.inline_guidance}</div>`;
+                }
+                
+                // For Living Form: Show AI response as conversation with embedded forms
+                if (response.response && response.response.trim()) {
+                    html += `<div class="ai-response" style="background:white;padding:20px;border-radius:12px;margin-bottom:20px;border:1px solid #e1e5e9;font-size:15px;line-height:1.6;box-shadow:0 2px 4px rgba(0,0,0,0.1);">${response.response}</div>`;
+                }
+                
+                // Show any extracted form HTML if present
+                if (response.form_html) {
+                    html += response.form_html;
+                }
+                
+                // If neither response nor form, show a fallback
+                if (!response.response && !response.form_html) {
+                    html += '<div style="padding:20px;text-align:center;color:#666;">Continue with your tire search...</div>';
+                }
+                
+                this.mainFormArea.innerHTML = html;
+                
+                // Store response in history for internal tracking
+                this.conversationHistory.push({
+                    type: 'assistant',
+                    content: response,
+                    timestamp: new Date()
+                });
+                
+                // Set up form submission handlers for any forms in the response
+                this.setupFormHandlers();
+            }
+
+
+
+            disableCurrentForm(formData) {
+                // Disable the current form in place
+                const currentForm = this.mainFormArea.querySelector('form:not([data-disabled="true"])');
+                if (currentForm) {
+                    // Mark as disabled to prevent multiple processing
+                    currentForm.dataset.disabled = 'true';
+                    
+                    // Fill in the values and make inputs read-only
+                    for (const [key, value] of Object.entries(formData)) {
+                        if (value && value.trim()) {
+                            const input = currentForm.querySelector(`[name="${key}"]`);
+                            if (input) {
+                                input.value = value;
+                                input.readOnly = true;
+                                input.disabled = true;
+                                input.style.backgroundColor = '#f8f9fa';
+                                input.style.cursor = 'default';
+                            }
+                        }
+                    }
+                    
+                    // Remove the submit button
+                    const submitButton = currentForm.querySelector('button[type="submit"]');
+                    if (submitButton) {
+                        submitButton.remove();
+                    }
+                    
+                    // Add a "submitted" indicator only if it doesn't exist
+                    if (!currentForm.querySelector('.submitted-indicator')) {
+                        const submittedIndicator = document.createElement('div');
+                        submittedIndicator.className = 'submitted-indicator';
+                        submittedIndicator.innerHTML = '<div style="text-align:center;padding:10px;background:#28a745;color:white;border-radius:6px;margin-top:10px;">✓ Form Submitted</div>';
+                        currentForm.appendChild(submittedIndicator);
+                    }
+                }
+                
+                // Store in history
+                this.conversationHistory.push({
+                    type: 'user',
+                    content: formData,
+                    timestamp: new Date()
+                });
+            }
+
+            addNewFormBelow(response) {
+                // Add the new AI response below the current form
+                let html = '';
+                
+                // Show inline guidance if present
+                if (response.inline_guidance) {
+                    html += `<div class="inline-guidance" style="background:#fff3cd;border:1px solid #ffeeba;padding:12px 18px;border-radius:8px;color:#856404;margin-bottom:18px;font-size:15px;">${response.inline_guidance}</div>`;
+                }
+                
+                // For Living Form: Show AI response as conversation with embedded forms
+                if (response.response && response.response.trim()) {
+                    html += `<div class="ai-response" style="background:white;padding:20px;border-radius:12px;margin-bottom:20px;border:1px solid #e1e5e9;font-size:15px;line-height:1.6;box-shadow:0 2px 4px rgba(0,0,0,0.1);">${response.response}</div>`;
+                }
+                
+                // Show any extracted form HTML if present
+                if (response.form_html) {
+                    html += response.form_html;
+                }
+                
+                // If neither response nor form, show a fallback
+                if (!response.response && !response.form_html) {
+                    html += '<div style="padding:20px;text-align:center;color:#666;">Continue with your tire search...</div>';
+                }
+                
+                // Append the new content below existing content
+                this.mainFormArea.insertAdjacentHTML('beforeend', html);
+                
+                // Store response in history for internal tracking
+                this.conversationHistory.push({
+                    type: 'assistant',
+                    content: response,
+                    timestamp: new Date()
+                });
+                
+                // Set up form submission handlers for any new forms
+                this.setupFormHandlers();
+                
+                // Scroll to the new form
+                this.mainFormArea.scrollTop = this.mainFormArea.scrollHeight;
+            }
+
+            setupFormHandlers() {
+                // Handle form submissions within the AI response
+                const forms = this.mainFormArea.querySelectorAll('form');
+                forms.forEach(form => {
+                    // Only add event listener if it doesn't already exist
+                    if (!form.dataset.hasSubmitHandler) {
+                        form.dataset.hasSubmitHandler = 'true';
+                        form.addEventListener('submit', (e) => {
+                            e.preventDefault();
+                            this.handleFormSubmission(form);
+                        });
+                    }
+                });
+            }
+
+            renderError(message) {
+                this.mainFormArea.innerHTML = `<div style="color:#dc3545;padding:20px;text-align:center;font-size:18px;">${this.escapeHtml(message)}</div>`;
+            }
+
+            updateCostTracker(costInfo) {
+                this.sessionCost += costInfo.cost;
+                this.messageCount++;
+                this.sessionCostElement.textContent = this.sessionCost.toFixed(4);
+                this.interactionCountElement.textContent = this.messageCount;
+            }
+
+            showLoading() {
+                this.loading.classList.add('active');
+            }
+
+            hideLoading() {
+                this.loading.classList.remove('active');
+            }
+
+            escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            new LivingFormApp();
+        });
+    </script>
+</body>
+</html> 
