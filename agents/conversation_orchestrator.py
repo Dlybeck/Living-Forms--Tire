@@ -1,34 +1,33 @@
-import asyncio
 import logging
-from typing import Dict, Optional, Any
+from typing import Dict, Any
 from datetime import datetime
 import re
 
-from utils.state_manager import ConversationState, UserKnowledgeLevel
+from utils.state_manager import ConversationState
 from database.tire_database import TireDatabase
-from agents.cost_manager import CostManager, ModelType
+from agents.cost_manager import CostManager
 from agents.ai_client import AIClient
+from agents.function_call_parser import FunctionCallParser
 
 logger = logging.getLogger(__name__)
 
 class ConversationOrchestrator:
     """
-    Orchestrates the living form conversation flow
-    This is the main controller that manages the conversation state,
-    determines what questions to ask, and coordinates between agents
+    Orchestrates the living form conversation flow using function-based form generation
+    This replaces the unreliable parsing approach with direct function execution
     """
     
     def __init__(self, tire_database: TireDatabase, cost_manager: CostManager):
         self.tire_database = tire_database
         self.cost_manager = cost_manager
         self.ai_client = AIClient()
+        self.function_parser = FunctionCallParser()
         
-        logger.info("Conversation orchestrator initialized")
+        logger.info("Conversation orchestrator initialized with function-based approach")
     
     async def process_message(self, user_message: str, conversation_state: ConversationState) -> Dict[str, Any]:
         """
-        Main entry point for processing user messages
-        AI generates both conversational responses AND form elements together
+        Main entry point for processing user messages using function-based form generation
         """
         start_time = datetime.now()
         
@@ -39,26 +38,38 @@ class ConversationOrchestrator:
             # Update user knowledge level based on message
             conversation_state.detect_user_knowledge_level(user_message)
             
-            # Step 1: Always use AI to generate the complete response (conversation + forms)
-            ai_response = await self._generate_ai_response(user_message, conversation_state)
+            # Step 1: Generate AI response with function call instructions
+            ai_response = await self._generate_ai_response_with_functions(user_message, conversation_state)
             
-            # Step 2: Extract form HTML from AI response if present
-            form_html = self._extract_form_html(ai_response["response"])
-            clean_response = self._clean_response_text(ai_response["response"])
+            # Step 2: Parse function calls and generate forms
+            conversation_text, form_html = self.function_parser.parse_function_calls(ai_response["response"])
             
-            response_data = {
-                "response": clean_response,
-                "form_html": form_html,
-                "inline_guidance": "",  # AI response includes guidance inline
-                "cost_info": ai_response.get("cost_info", {"cost": ai_response.get("cost", 0.0), "model_used": ai_response.get("model_used", "ai"), "source": "ai"}),
-                "processing_time": (datetime.now() - start_time).total_seconds(),
-                "source": "ai_living_form"
-            }
+            # Step 3: Determine response format
+            if form_html:
+                # AI created a form using function calls
+                response_data = {
+                    "response": "",  # No separate text response
+                    "form_html": form_html,
+                    "inline_guidance": "",
+                    "cost_info": ai_response.get("cost_info", {"cost": ai_response.get("cost", 0.0), "model_used": ai_response.get("model_used", "ai"), "source": "ai"}),
+                    "processing_time": (datetime.now() - start_time).total_seconds(),
+                    "source": "function_based_form"
+                }
+            else:
+                # AI provided conversational response only
+                response_data = {
+                    "response": conversation_text,
+                    "form_html": "",
+                    "inline_guidance": "",
+                    "cost_info": ai_response.get("cost_info", {"cost": ai_response.get("cost", 0.0), "model_used": ai_response.get("model_used", "ai"), "source": "ai"}),
+                    "processing_time": (datetime.now() - start_time).total_seconds(),
+                    "source": "conversation_only"
+                }
             
             # Add to conversation history
             conversation_state.add_interaction(
                 user_message=user_message,
-                ai_response=clean_response,
+                ai_response=conversation_text,
                 cost=ai_response.get("cost", 0.0),
                 model_used=ai_response.get("model_used", "ai")
             )
@@ -78,9 +89,10 @@ class ConversationOrchestrator:
         for make in makes:
             if make in user_lower:
                 conversation_state.vehicle_info['make'] = make.title()
+                logger.info(f"Extracted vehicle make: {make.title()}")
                 break
         
-        # Extract model (common models)
+        # Extract model (common models) with fact checking
         models = {
             'kia': ['forte', 'soul', 'sportage', 'sorento', 'telluride', 'k5', 'rio'],
             'honda': ['civic', 'accord', 'cr-v', 'pilot', 'odyssey', 'fit'],
@@ -89,26 +101,36 @@ class ConversationOrchestrator:
             'chevrolet': ['silverado', 'equinox', 'tahoe', 'camaro', 'cruze', 'malibu']
         }
         
+        # Let the AI handle fact checking - don't pre-determine what's wrong
+        # Just extract what we can and let the AI be smart about it
+        
         current_make = conversation_state.vehicle_info.get('make', '').lower()
         if current_make in models:
             for model in models[current_make]:
                 if model in user_lower:
                     conversation_state.vehicle_info['model'] = model.title()
+                    logger.info(f"Extracted vehicle model: {model.title()}")
                     break
         
         # Extract year (4-digit year)
         year_match = re.search(r'\b(19|20)\d{2}\b', user_message)
         if year_match:
             conversation_state.vehicle_info['year'] = year_match.group()
+            logger.info(f"Extracted vehicle year: {year_match.group()}")
         
         # Extract tire size pattern
         tire_size_match = re.search(r'\b\d{3}/\d{2}R\d{2}\b', user_message.upper())
         if tire_size_match:
             conversation_state.tire_specs['current_tire_size'] = tire_size_match.group()
+            logger.info(f"Extracted tire size: {tire_size_match.group()}")
+        
+        # Log the final vehicle info
+        if conversation_state.vehicle_info:
+            logger.info(f"Final vehicle info: {conversation_state.vehicle_info}")
     
-    async def _generate_ai_response(self, user_message: str, conversation_state: ConversationState) -> Dict[str, Any]:
+    async def _generate_ai_response_with_functions(self, user_message: str, conversation_state: ConversationState) -> Dict[str, Any]:
         """
-        Generate AI response using the most appropriate model
+        Generate AI response with function call instructions
         """
         # Determine query complexity
         query_complexity = self._analyze_query_complexity(user_message, conversation_state)
@@ -126,13 +148,14 @@ class ConversationOrchestrator:
             # Use fallback response
             return self._generate_fallback_response(user_message, conversation_state)
         
-        # Generate AI response
+        # Generate AI response with function call instructions
         try:
             response = await self.ai_client.generate_response(
                 user_message=user_message,
                 conversation_context=conversation_state.get_conversation_context(),
                 model_type=recommended_model,
-                response_format="living_form"
+                response_format="function_calls",
+                function_documentation=self.function_parser.get_function_documentation()
             )
             
             # Track the cost
@@ -218,50 +241,15 @@ class ConversationOrchestrator:
             "session_id": conversation_state.session_id,
             "current_step": conversation_state.current_step.value,
             "user_knowledge_level": conversation_state.user_knowledge_level.value,
-            "total_interactions": len(conversation_state.conversation_history),
+            "vehicle_info": conversation_state.vehicle_info,
+            "tire_specs": conversation_state.tire_specs,
+            "driving_patterns": conversation_state.driving_patterns,
+            "budget_preferences": conversation_state.budget_preferences,
+            "current_tire_status": conversation_state.current_tire_status,
+            "special_considerations": conversation_state.special_considerations,
+            "completion_status": conversation_state.get_category_completion_status(),
+            "ready_for_recommendations": conversation_state.is_ready_for_recommendations(),
+            "conversation_length": len(conversation_state.conversation_history),
             "total_cost": conversation_state.total_cost,
-            "vehicle_info_complete": bool(conversation_state.vehicle_info.get("make") and 
-                                         conversation_state.vehicle_info.get("model") and 
-                                         conversation_state.vehicle_info.get("year")),
-            "ready_for_recommendations": conversation_state.is_ready_for_recommendations()
-        }
-
-    def _extract_form_html(self, ai_response: str) -> str:
-        """Extract form HTML from AI response"""
-        import re
-        
-        # Look for form tags in the AI response
-        form_match = re.search(r'<form[^>]*>.*?</form>', ai_response, re.DOTALL | re.IGNORECASE)
-        if form_match:
-            return form_match.group(0)
-        
-        # If no complete form found, but there are form elements, wrap them
-        if any(tag in ai_response.lower() for tag in ['<input', '<textarea', '<select', '<button']):
-            # Extract form elements and wrap them
-            form_elements = re.findall(r'<(?:input|textarea|select|button)[^>]*(?:>.*?</(?:textarea|select|button)>|>)', ai_response, re.DOTALL | re.IGNORECASE)
-            if form_elements:
-                form_html = '<form class="living-form ai-generated">'
-                form_html += '<div class="form-body">'
-                form_html += ''.join(form_elements)
-                form_html += '</div>'
-                form_html += '<div class="form-actions"><button type="submit" class="btn-primary">Continue</button></div>'
-                form_html += '</form>'
-                return form_html
-        
-        return ""
-
-    def _clean_response_text(self, ai_response: str) -> str:
-        """Remove form HTML from AI response to get clean text"""
-        import re
-        
-        # Remove form tags and their contents
-        cleaned = re.sub(r'<form[^>]*>.*?</form>', '', ai_response, flags=re.DOTALL | re.IGNORECASE)
-        
-        # Remove standalone form elements
-        cleaned = re.sub(r'<(?:input|textarea|select|button)[^>]*(?:>.*?</(?:textarea|select|button)>|>)', '', cleaned, flags=re.DOTALL | re.IGNORECASE)
-        
-        # Clean up extra whitespace
-        cleaned = re.sub(r'\n\s*\n', '\n\n', cleaned)
-        cleaned = cleaned.strip()
-        
-        return cleaned 
+            "researched_info": conversation_state.researched_info
+        } 

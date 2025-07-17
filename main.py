@@ -59,41 +59,18 @@ async def get_welcome_message():
     welcome_html = """
     <div style="background:white;padding:25px;border-radius:12px;margin-bottom:25px;border:1px solid #e1e5e9;font-size:16px;line-height:1.6;">
         <h3 style="color:#667eea;margin-bottom:15px;font-size:20px;">👋 Welcome to Your Tire Search Assistant!</h3>
-        <p style="margin-bottom:15px;">I'm here to help you find the perfect tires for your vehicle. This process is simple and personalized - I'll guide you through finding tires that match your needs and budget.</p>
-        <p style="margin-bottom:20px;"><strong>Let's start with some basic information about your vehicle:</strong></p>
+        <p style="margin-bottom:15px;">I'm here to help you find the perfect tires for your vehicle. Whether you need new tires, have questions about tire types, or want to understand what's best for your driving needs - I'm here to guide you through the process.</p>
+        <p style="margin-bottom:20px;"><strong>How can I help you today?</strong></p>
         
         <form class="living-form" style="background:#f8f9fa;padding:20px;border-radius:8px;border:1px solid #e9ecef;">
-            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:15px;margin-bottom:20px;">
-                <div>
-                    <label style="display:block;margin-bottom:5px;font-weight:500;color:#495057;">Vehicle Year</label>
-                    <input type="number" name="year" placeholder="e.g., 2020" min="1990" max="2025" style="width:100%;padding:10px;border:2px solid #e9ecef;border-radius:6px;font-size:14px;" />
-                </div>
-                <div>
-                    <label style="display:block;margin-bottom:5px;font-weight:500;color:#495057;">Make</label>
-                    <input type="text" name="make" placeholder="e.g., Toyota, Honda, Ford" style="width:100%;padding:10px;border:2px solid #e9ecef;border-radius:6px;font-size:14px;" />
-                </div>
-                <div>
-                    <label style="display:block;margin-bottom:5px;font-weight:500;color:#495057;">Model</label>
-                    <input type="text" name="model" placeholder="e.g., Camry, Civic, F-150" style="width:100%;padding:10px;border:2px solid #e9ecef;border-radius:6px;font-size:14px;" />
-                </div>
-                <div>
-                    <label style="display:block;margin-bottom:5px;font-weight:500;color:#495057;">Number of Tires</label>
-                    <select name="tire_count" style="width:100%;padding:10px;border:2px solid #e9ecef;border-radius:6px;font-size:14px;">
-                        <option value="">Select...</option>
-                        <option value="1">1 tire</option>
-                        <option value="2">2 tires</option>
-                        <option value="4">4 tires (full set)</option>
-                    </select>
-                </div>
-            </div>
-            
             <div style="margin-bottom:20px;">
-                <label style="display:block;margin-bottom:5px;font-weight:500;color:#495057;">Additional Information (Optional)</label>
-                <textarea name="additional_notes" placeholder="Tell me about your driving habits, budget preferences, or any specific tire needs you have..." style="width:100%;padding:12px;border:2px solid #e9ecef;border-radius:6px;font-size:14px;min-height:80px;resize:vertical;"></textarea>
+                <label style="display:block;margin-bottom:5px;font-weight:500;color:#495057;">Tell me what you're looking for</label>
+                <textarea name="user_request" placeholder="I want to get a set of new tires for my 2015 Honda Accord" style="width:100%;padding:12px;border:2px solid #e9ecef;border-radius:6px;font-size:14px;min-height:80px;resize:vertical;font-family: inherit;"></textarea>
+
             </div>
             
             <button type="submit" style="background:#667eea;color:white;border:none;padding:12px 30px;border-radius:6px;font-size:16px;cursor:pointer;transition:background-color 0.3s ease;">
-                🔍 Start My Tire Search
+                🚀 Let's Get Started
             </button>
         </form>
     </div>

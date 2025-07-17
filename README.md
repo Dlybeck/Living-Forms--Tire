@@ -87,10 +87,13 @@ The system gathers comprehensive tire purchasing information:
    export ANTHROPIC_API_KEY="your-anthropic-key"
    ```
 
-5. **Run Server**
+5. **Run Server (Development, with Hot Reload)**
    ```bash
-   python -m uvicorn main:app --reload --port 8000
+   uvicorn main:app --reload --port 8000
    ```
+   > **Note:** This is the recommended way to run the app for development. The `--reload` flag enables automatic reloading on code changes.
+
+   - If you run `python main.py`, hot-reload will NOT work and you may see warnings. Always use the command above for development.
 
 6. **Access Application**
    Open `http://localhost:8000` in your browser

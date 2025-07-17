@@ -1,11 +1,8 @@
 import os
-import asyncio
 import logging
 from typing import Dict, Optional, Any
-from datetime import datetime
 from agents.cost_manager import ModelType
 import aiohttp
-import json
 
 logger = logging.getLogger(__name__)
 
@@ -53,13 +50,13 @@ class AIClient:
         logger.info("AI Client initialized with available models")
     
     async def generate_response(self, user_message: str, conversation_context: Dict[str, Any], 
-                              model_type: ModelType, response_format: str = "text") -> Dict[str, Any]:
+                              model_type: ModelType, response_format: str = "text", function_documentation: Optional[str] = None) -> Dict[str, Any]:
         """
         Generate AI response using specified model
         """
         try:
             # Build the prompt based on context and format
-            prompt = self._build_prompt(user_message, conversation_context, response_format)
+            prompt = self._build_prompt(user_message, conversation_context, response_format, function_documentation)
             
             # Get model configuration
             model_config = self.model_mappings[model_type]
@@ -87,7 +84,7 @@ class AIClient:
             logger.error(f"AI generation failed: {str(e)}")
             raise
     
-    def _build_prompt(self, user_message: str, conversation_context: Dict[str, Any], response_format: str) -> str:
+    def _build_prompt(self, user_message: str, conversation_context: Dict[str, Any], response_format: str, function_documentation: Optional[str] = None) -> str:
         """Build prompt based on context and format requirements"""
         
         # Get context information
@@ -114,22 +111,59 @@ class AIClient:
         # Import the system prompt from the prompts module
         from prompts import SYSTEM_PROMPT
         
-        # Build the full prompt with context
-        system_prompt = SYSTEM_PROMPT + f"""
+        # Add function documentation if provided
+        function_instructions = ""
+        if function_documentation and response_format == "function_calls":
+            function_instructions = f"""
+            
+            FORM BUILDING FUNCTIONS:
+            {function_documentation}
+            
+            IMPORTANT: When you need to collect information from the user, use the function calls above.
+            Format: [FUNCTION_CALL] function_name(name="field_name", label="User-friendly label", required=True)
+            
+            Examples:
+            - [FUNCTION_CALL] create_text_field(name="vehicle_make", label="What is your vehicle's make?", required=True)
+            - [FUNCTION_CALL] create_select_field(name="driving_style", label="How would you describe your driving style?", options=["Conservative", "Moderate", "Aggressive"], required=True)
+            - [FUNCTION_CALL] create_budget_range_field(name="budget", label="What's your budget range for tires?", required=True)
+            
+            Only use function calls when you need to collect specific information. For general conversation, just respond normally.
+            """
         
-        Current conversation context:
+        # Build the full prompt with context
+        system_prompt = SYSTEM_PROMPT + function_instructions + f"""
+        
+        CURRENT CONVERSATION CONTEXT:
         - Conversation step: {current_step}
         - User knowledge level: {user_knowledge_level}
-        - Vehicle info: {vehicle_info}
-        - Tire specs: {tire_specs}
-        - Driving patterns: {driving_patterns}
-        - Budget preferences: {budget_preferences}
-        - Current tire status: {current_tire_status}
-        - Special considerations: {special_considerations}
+        
+        VEHICLE INFORMATION (ALREADY COLLECTED):
+        {vehicle_info if vehicle_info else "No vehicle information collected yet"}
+        
+
+        
+        TIRE SPECIFICATIONS:
+        {tire_specs if tire_specs else "No tire specifications collected yet"}
+        
+        DRIVING PATTERNS:
+        {driving_patterns if driving_patterns else "No driving patterns collected yet"}
+        
+        BUDGET PREFERENCES:
+        {budget_preferences if budget_preferences else "No budget preferences collected yet"}
+        
+        CURRENT TIRE STATUS:
+        {current_tire_status if current_tire_status else "No current tire status collected yet"}
+        
+        SPECIAL CONSIDERATIONS:
+        {special_considerations if special_considerations else "No special considerations collected yet"}
+        
+        MISSING INFORMATION:
         - Missing vehicle info: {missing_vehicle_info}
         - Missing tire specs: {missing_tire_specs}
-        - User's actual input: {user_message}
-        - Researched information: {conversation_context.get('researched_info', {})}
+        
+        USER'S LATEST MESSAGE: {user_message}
+        
+        RESEARCHED INFORMATION: {conversation_context.get('researched_info', {})}
         """
         
         # Build the full prompt
