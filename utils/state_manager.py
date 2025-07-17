@@ -215,19 +215,7 @@ class ConversationState:
             DataCategory.SPECIAL_CONSIDERATIONS: self.is_category_completed(DataCategory.SPECIAL_CONSIDERATIONS)
         }
     
-    def mark_form_completed(self, form_type: str):
-        """Mark a form as completed to prevent duplicate submissions"""
-        if form_type not in self.completed_forms:
-            self.completed_forms.append(form_type)
-        self.last_form_submission = form_type
-    
-    def is_form_completed(self, form_type: str) -> bool:
-        """Check if a form has been completed"""
-        return form_type in self.completed_forms
-    
-    def get_last_form_submission(self) -> Optional[str]:
-        """Get the last form that was submitted"""
-        return self.last_form_submission
+
     
     def store_researched_info(self, key: str, value: Any):
         """Store researched information (like tire sizes for specific trims)"""
@@ -290,54 +278,7 @@ class ConversationState:
         
         return has_vehicle_info and has_some_preferences
     
-    def advance_conversation_step(self):
-        """Advance to the next logical conversation step"""
-        current_step = self.current_step
-        
-        if current_step == ConversationStep.GREETING:
-            self.current_step = ConversationStep.VEHICLE_INFO
-        elif current_step == ConversationStep.VEHICLE_INFO:
-            if self.get_missing_vehicle_info():
-                # Stay in vehicle info until complete
-                pass
-            else:
-                self.current_step = ConversationStep.TIRE_SPECS
-        elif current_step == ConversationStep.TIRE_SPECS:
-            if self.get_missing_tire_specs():
-                # Stay in tire specs until complete
-                pass
-            else:
-                self.current_step = ConversationStep.DRIVING_PATTERNS
-        elif current_step == ConversationStep.DRIVING_PATTERNS:
-            if self.get_missing_driving_patterns():
-                # Stay in driving patterns until complete
-                pass
-            else:
-                self.current_step = ConversationStep.BUDGET_PREFERENCES
-        elif current_step == ConversationStep.BUDGET_PREFERENCES:
-            if self.get_missing_budget_preferences():
-                # Stay in budget preferences until complete
-                pass
-            else:
-                self.current_step = ConversationStep.CURRENT_TIRE_STATUS
-        elif current_step == ConversationStep.CURRENT_TIRE_STATUS:
-            if self.get_missing_current_tire_status():
-                # Stay in current tire status until complete
-                pass
-            else:
-                self.current_step = ConversationStep.SPECIAL_CONSIDERATIONS
-        elif current_step == ConversationStep.SPECIAL_CONSIDERATIONS:
-            if self.get_missing_special_considerations():
-                # Stay in special considerations until complete
-                pass
-            else:
-                self.current_step = ConversationStep.RECOMMENDATION
-        elif current_step == ConversationStep.RECOMMENDATION:
-            self.current_step = ConversationStep.COMPARISON
-        elif current_step == ConversationStep.COMPARISON:
-            self.current_step = ConversationStep.FINAL_SELECTION
-        elif current_step == ConversationStep.FINAL_SELECTION:
-            self.current_step = ConversationStep.COMPLETED
+
     
     def detect_user_knowledge_level(self, user_message: str) -> UserKnowledgeLevel:
         """Detect user's knowledge level from their message"""

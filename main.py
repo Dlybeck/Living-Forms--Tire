@@ -170,31 +170,7 @@ async def health_check():
         "active_sessions": len(active_sessions)
     }
 
-@app.get("/test-form")
-async def test_form_generation():
-    """Test endpoint to directly test form generation"""
-    try:
-        from utils.state_manager import ConversationState
-        from agents.living_form_generator import LivingFormGenerator
-        
-        # Create a new conversation state
-        conversation_state = ConversationState(session_id="test123")
-        
-        # Create form generator
-        form_generator = LivingFormGenerator()
-        
-        # Generate the first form
-        form_html = form_generator.generate_living_form(conversation_state)
-        
-        return {
-            "form_html": form_html,
-            "status": "success"
-        }
-    except Exception as e:
-        return {
-            "error": str(e),
-            "status": "error"
-        }
+
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000, reload=True) 

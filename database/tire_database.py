@@ -425,26 +425,7 @@ class TireDatabase:
         """Get all compatible tire sizes for a vehicle"""
         return vehicle_info.oem_tire_sizes + vehicle_info.alternative_sizes
     
-    def save_database(self):
-        """Save current database to file"""
-        try:
-            with open(self.data_file, 'w') as f:
-                json.dump(self.data, f, indent=2)
-            logger.info(f"Database saved to {self.data_file}")
-        except Exception as e:
-            logger.error(f"Error saving database: {e}")
-    
-    def add_vehicle(self, vehicle_key: str, vehicle_data: Dict[str, Any]):
-        """Add new vehicle to database"""
-        self.data["vehicles"][vehicle_key] = vehicle_data
-        self.vehicles[vehicle_key] = vehicle_data
-        logger.info(f"Added vehicle: {vehicle_key}")
-    
-    def add_tire(self, tire_key: str, tire_data: Dict[str, Any]):
-        """Add new tire to database"""
-        self.data["tires"][tire_key] = tire_data
-        self.tires[tire_key] = tire_data
-        logger.info(f"Added tire: {tire_key}")
+
     
     def search_vehicles(self, query: str) -> List[Dict[str, Any]]:
         """Search vehicles by query"""
