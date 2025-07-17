@@ -59,14 +59,39 @@ async def get_welcome_message():
     welcome_html = """
     <div style="background:white;padding:25px;border-radius:12px;margin-bottom:25px;border:1px solid #e1e5e9;font-size:16px;line-height:1.6;">
         <h3 style="color:#667eea;margin-bottom:15px;font-size:20px;">👋 Welcome to Your Tire Search Assistant!</h3>
-        <p style="margin-bottom:15px;">I'm here to help you find the perfect tires for your vehicle. Whether you need new tires, have questions about tire types, or want to understand what's best for your driving needs - I'm here to guide you through the process.</p>
-        <p style="margin-bottom:20px;"><strong>How can I help you today?</strong></p>
+        <p style="margin-bottom:15px;">I'm here to help you find the perfect tires for your vehicle. To get started, I'd like to know your vehicle information. What's the easiest way for you to share this?</p>
         
         <form class="living-form" style="background:#f8f9fa;padding:20px;border-radius:8px;border:1px solid #e9ecef;">
             <div style="margin-bottom:20px;">
-                <label style="display:block;margin-bottom:5px;font-weight:500;color:#495057;">Tell me what you're looking for</label>
-                <textarea name="user_request" placeholder="I want to get a set of new tires for my 2015 Honda Accord" style="width:100%;padding:12px;border:2px solid #e9ecef;border-radius:6px;font-size:14px;min-height:80px;resize:vertical;font-family: inherit;"></textarea>
-
+                <label style="display:block;margin-bottom:10px;font-weight:500;color:#495057;">How would you like to provide your vehicle information?</label>
+                
+                <div style="margin-bottom:15px;">
+                    <input type="radio" id="tire_size" name="info_method" value="tire_size" style="margin-right:8px;">
+                    <label for="tire_size" style="font-weight:normal;cursor:pointer;">
+                        <strong>Tire size</strong> (e.g., 225/60R16) - I know my current tire size
+                    </label>
+                </div>
+                
+                <div style="margin-bottom:15px;">
+                    <input type="radio" id="vin" name="info_method" value="vin" style="margin-right:8px;">
+                    <label for="vin" style="font-weight:normal;cursor:pointer;">
+                        <strong>VIN number</strong> - I can find my vehicle identification number
+                    </label>
+                </div>
+                
+                <div style="margin-bottom:15px;">
+                    <input type="radio" id="make_model_year" name="info_method" value="make_model_year" style="margin-right:8px;">
+                    <label for="make_model_year" style="font-weight:normal;cursor:pointer;">
+                        <strong>Make/Model/Year</strong> - I know my vehicle details
+                    </label>
+                </div>
+                
+                <div style="margin-bottom:15px;">
+                    <input type="radio" id="not_sure" name="info_method" value="not_sure" style="margin-right:8px;">
+                    <label for="not_sure" style="font-weight:normal;cursor:pointer;">
+                        <strong>I'm not sure</strong> - Help me figure out what I need
+                    </label>
+                </div>
             </div>
             
             <button type="submit" style="background:#667eea;color:white;border:none;padding:12px 30px;border-radius:6px;font-size:16px;cursor:pointer;transition:background-color 0.3s ease;">
@@ -145,6 +170,57 @@ async def health_check():
         "status": "healthy",
         "timestamp": datetime.now().isoformat(),
         "active_sessions": len(active_sessions)
+    }
+
+@app.get("/test-ai")
+async def test_ai_endpoint():
+    """Test AI endpoints to check if they're working"""
+    from agents.ai_client import AIClient
+    from agents.cost_manager import ModelType
+    
+    ai_client = AIClient()
+    
+    test_results = {}
+    
+    # Test Anthropic Claude 3.5 Sonnet
+    try:
+        response = await ai_client.generate_response(
+            user_message="Hello, this is a test message.",
+            conversation_context={"current_step": "test"},
+            model_type=ModelType.CLAUDE_3_5_SONNET
+        )
+        test_results["anthropic_claude_3_5"] = {
+            "status": "success",
+            "model": response.get("model", "unknown"),
+            "cost": response.get("cost", 0.0)
+        }
+    except Exception as e:
+        test_results["anthropic_claude_3_5"] = {
+            "status": "failed",
+            "error": str(e)
+        }
+    
+    # Test OpenAI GPT-4o
+    try:
+        response = await ai_client.generate_response(
+            user_message="Hello, this is a test message.",
+            conversation_context={"current_step": "test"},
+            model_type=ModelType.GPT_4O
+        )
+        test_results["openai_gpt_4o"] = {
+            "status": "success",
+            "model": response.get("model", "unknown"),
+            "cost": response.get("cost", 0.0)
+        }
+    except Exception as e:
+        test_results["openai_gpt_4o"] = {
+            "status": "failed",
+            "error": str(e)
+        }
+    
+    return {
+        "timestamp": datetime.now().isoformat(),
+        "test_results": test_results
     }
 
 

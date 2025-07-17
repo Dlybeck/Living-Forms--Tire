@@ -263,7 +263,7 @@ class FormBuilderTools:
             <form class="living-form" style="background:#f8f9fa;padding:20px;border-radius:8px;border:1px solid #e9ecef;">
                 {self.create_checkbox_field("performance_needs", "Performance Needs", ["High Performance", "Fuel Efficiency", "Comfort", "Handling", "Durability"], False, "Select any performance priorities")}
                 {self.create_checkbox_field("special_conditions", "Special Conditions", ["Towing", "Off-Road", "Racing", "Commercial Use", "Heavy Loads"], False, "Any special driving conditions?")}
-                {self.create_textarea_field("additional_notes", "Additional Notes", False, "Any other considerations or preferences?", 3, "Tell us anything else that might help with recommendations")}
+                <!-- Additional Thoughts field is automatically added by the system -->
                 
                 <button type="submit" style="background:#667eea;color:white;border:none;padding:12px 30px;border-radius:6px;font-size:16px;cursor:pointer;transition:background-color 0.3s ease;">
                     Get Tire Recommendations

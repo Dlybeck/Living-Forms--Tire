@@ -13,11 +13,20 @@ class CostStrategy(Enum):
     FIXED_BUDGET = "fixed_budget"
 
 class ModelType(Enum):
-    """Available model types with July 2025 pricing"""
+    """Available model types with updated 2025 pricing"""
+    # Claude models (for comparison)
+    CLAUDE_SONNET_4 = "claude-sonnet-4"
     CLAUDE_3_7 = "claude-3.7"
     CLAUDE_3_5_SONNET = "claude-3.5-sonnet"
-    GPT_4O = "gpt-4o"
-    GPT_3_5_TURBO = "gpt-3.5-turbo"
+    
+    # GPT models (primary choices)
+    GPT_4O = "gpt-4o"                                    # $2.50/$1.25 per 1M tokens
+    GPT_4O_MINI = "gpt-4o-mini"                          # $0.15/$0.075 per 1M tokens (BEST VALUE)
+    GPT_4O_MINI_SEARCH = "gpt-4o-mini-search-preview"    # $0.15 per 1M tokens (WITH WEB SEARCH!)
+    GPT_4O_SEARCH = "gpt-4o-search-preview"              # $2.50 per 1M tokens (WITH WEB SEARCH!)
+    GPT_4_1_MINI = "gpt-4.1-mini"                        # $0.40/$0.10 per 1M tokens
+    GPT_4_1_NANO = "gpt-4.1-nano"                        # $0.10/$0.025 per 1M tokens (CHEAPEST)
+    GPT_3_5_TURBO = "gpt-3.5-turbo"                      # Legacy fallback
 
 class CostManagerInterface(ABC):
     """Abstract interface for cost management strategies"""
@@ -26,27 +35,60 @@ class CostManagerInterface(ABC):
         self.config = config
         self.conversation_budget = config.get("conversation_budget", 0.20)
         
-        # Modern 2025 model pricing (estimated)
+        # Updated 2025 model pricing (per 1K tokens)
         self.model_costs = {
-            ModelType.CLAUDE_3_7: {
-                'input_cost': 0.015,    # per 1K tokens
-                'output_cost': 0.075,   # per 1K tokens
-                'best_for': ['complex_reasoning', 'agentic_workflows']
+            # Claude models (for comparison)
+            ModelType.CLAUDE_SONNET_4: {
+                'input_cost': 0.003,    # $3.00 per 1M tokens
+                'output_cost': 0.015,   # $15.00 per 1M tokens
+                'best_for': ['balanced_tasks', 'web_search', 'tire_recommendations']
             },
-            ModelType.GPT_4O: {
-                'input_cost': 0.005,    # per 1K tokens  
-                'output_cost': 0.015,   # per 1K tokens
-                'best_for': ['conversational_flow', 'structured_output']
+            ModelType.CLAUDE_3_7: {
+                'input_cost': 0.003,    # $3.00 per 1M tokens
+                'output_cost': 0.015,   # $15.00 per 1M tokens
+                'best_for': ['complex_reasoning', 'agentic_workflows', 'web_search']
             },
             ModelType.CLAUDE_3_5_SONNET: {
-                'input_cost': 0.003,    # per 1K tokens
-                'output_cost': 0.015,   # per 1K tokens
+                'input_cost': 0.003,    # $3.00 per 1M tokens
+                'output_cost': 0.015,   # $15.00 per 1M tokens
                 'best_for': ['balanced_tasks', 'tire_recommendations']
             },
+            
+            # GPT models (primary choices - much cheaper!)
+            ModelType.GPT_4O: {
+                'input_cost': 0.0025,   # $2.50 per 1M tokens
+                'output_cost': 0.00125, # $1.25 per 1M tokens
+                'best_for': ['conversational_flow', 'structured_output', 'reliability']
+            },
+            ModelType.GPT_4O_MINI: {
+                'input_cost': 0.00015,  # $0.15 per 1M tokens (EXCELLENT VALUE!)
+                'output_cost': 0.000075,# $0.075 per 1M tokens
+                'best_for': ['cost_effective', 'tire_recommendations', 'general_chat']
+            },
+            ModelType.GPT_4O_MINI_SEARCH: {
+                'input_cost': 0.00015,  # $0.15 per 1M tokens (WITH WEB SEARCH!)
+                'output_cost': 0.00015, # $0.15 per 1M tokens
+                'best_for': ['web_search', 'cost_effective', 'tire_recommendations']
+            },
+            ModelType.GPT_4O_SEARCH: {
+                'input_cost': 0.0025,   # $2.50 per 1M tokens (WITH WEB SEARCH!)
+                'output_cost': 0.0025,  # $2.50 per 1M tokens
+                'best_for': ['web_search', 'premium_quality', 'complex_queries']
+            },
+            ModelType.GPT_4_1_MINI: {
+                'input_cost': 0.0004,   # $0.40 per 1M tokens
+                'output_cost': 0.0001,  # $0.10 per 1M tokens
+                'best_for': ['balanced_cost', 'good_quality']
+            },
+            ModelType.GPT_4_1_NANO: {
+                'input_cost': 0.0001,   # $0.10 per 1M tokens (CHEAPEST!)
+                'output_cost': 0.000025,# $0.025 per 1M tokens
+                'best_for': ['ultra_cheap', 'simple_tasks']
+            },
             ModelType.GPT_3_5_TURBO: {
-                'input_cost': 0.001,    # per 1K tokens
-                'output_cost': 0.002,   # per 1K tokens
-                'best_for': ['simple_tasks', 'basic_chat']
+                'input_cost': 0.001,    # $1.00 per 1M tokens (legacy)
+                'output_cost': 0.002,   # $2.00 per 1M tokens
+                'best_for': ['legacy_fallback']
             }
         }
     
@@ -131,23 +173,86 @@ class GenerousCostManager(CostManagerInterface):
         return remaining_budget > estimated_cost
     
     def get_recommended_model(self, query_complexity: str, conversation_state) -> ModelType:
-        """Quality-first model selection"""
+        """Cost-effective GPT model selection - prioritize GPT models with web search"""
         remaining_budget = self.get_remaining_budget(conversation_state)
         
-        # Use best model for complex queries
-        if query_complexity == "high":
-            return ModelType.CLAUDE_3_7
+        # Check if this query might benefit from web search
+        needs_web_search = self._needs_web_search(query_complexity, conversation_state)
         
-        # Use good balance for medium complexity
-        elif query_complexity == "medium":
+        # If web search is needed, use GPT models with web search (much cheaper than Claude!)
+        if needs_web_search:
+            if remaining_budget >= 0.05:  # 5 cents for premium web search
+                logger.info("Using GPT-4o-search for premium web search capability")
+                return ModelType.GPT_4O_SEARCH
+            elif remaining_budget >= 0.02:  # 2 cents for cost-effective web search
+                logger.info("Using GPT-4o-mini-search for cost-effective web search")
+                return ModelType.GPT_4O_MINI_SEARCH
+            else:
+                # Fall back to regular GPT-4o-mini if budget is too tight for web search
+                logger.info("Budget too tight for web search, using regular GPT-4o-mini")
+                return ModelType.GPT_4O_MINI
+        
+        # Regular queries without web search needs
+        # Use GPT-4o-mini as primary choice (EXCELLENT value - 20x cheaper than Claude!)
+        if remaining_budget >= 0.02:  # 2 cents remaining
+            return ModelType.GPT_4O_MINI
+        
+        # Use GPT-4o for complex queries when we have budget
+        if query_complexity == "high" and remaining_budget >= 0.05:
             return ModelType.GPT_4O
         
-        # Use efficient model for simple queries
-        elif query_complexity == "low":
-            return ModelType.CLAUDE_3_5_SONNET
+        # Use GPT-4.1-nano for ultra-cheap when budget is very tight
+        if remaining_budget < 0.01:  # Less than 1 cent
+            return ModelType.GPT_4_1_NANO
         
-        # Default to balanced option
-        return ModelType.CLAUDE_3_5_SONNET
+        # Use GPT-4.1-mini as balanced option
+        if remaining_budget >= 0.01:
+            return ModelType.GPT_4_1_MINI
+        
+        # Emergency fallback to cheapest option
+        return ModelType.GPT_4_1_NANO
+    
+    def _needs_web_search(self, query_complexity: str, conversation_state) -> bool:
+        """Determine if the query would benefit from web search capabilities"""
+        # Check if we have vehicle info but might need trim levels
+        vehicle_info = conversation_state.vehicle_info
+        if vehicle_info.get('make') and vehicle_info.get('model') and vehicle_info.get('year'):
+            # We have basic vehicle info, might need trim levels or tire specs
+            if not vehicle_info.get('trim') and not conversation_state.tire_specs.get('current_tire_size'):
+                return True
+        
+        # Check if user is asking for specific vehicle information
+        if hasattr(conversation_state, 'last_user_message'):
+            last_message = conversation_state.last_user_message.lower()
+            web_search_indicators = [
+                'trim', 'package', 'edition', 'specification', 'specs',
+                'what tires', 'tire size', 'fits', 'compatible',
+                'recommendation', 'best tires', 'reviews'
+            ]
+            if any(indicator in last_message for indicator in web_search_indicators):
+                return True
+        
+        return False
+        
+        # Check if we have vehicle info but might need trim levels
+        vehicle_info = conversation_state.vehicle_info
+        if vehicle_info.get('make') and vehicle_info.get('model') and vehicle_info.get('year'):
+            # We have basic vehicle info, might need trim levels or tire specs
+            if not vehicle_info.get('trim') and not conversation_state.tire_specs.get('current_tire_size'):
+                return True
+        
+        # Check if user is asking for specific vehicle information
+        if hasattr(conversation_state, 'last_user_message'):
+            last_message = conversation_state.last_user_message.lower()
+            web_search_indicators = [
+                'trim', 'package', 'edition', 'specification', 'specs',
+                'what tires', 'tire size', 'fits', 'compatible',
+                'recommendation', 'best tires', 'reviews'
+            ]
+            if any(indicator in last_message for indicator in web_search_indicators):
+                return True
+        
+        return False
     
     def should_use_fallback(self, conversation_state) -> bool:
         """Only use fallback if budget is completely exhausted"""
@@ -185,19 +290,19 @@ class OptimizedCostManager(CostManagerInterface):
         return True
     
     def get_recommended_model(self, query_complexity: str, conversation_state) -> ModelType:
-        """Cost-optimized model selection"""
+        """Cost-optimized model selection - prioritize cost-effective GPT models"""
         remaining_budget = self.get_remaining_budget(conversation_state)
         
-        # If budget is tight, use cheaper models
-        if remaining_budget < 0.05:
-            return ModelType.CLAUDE_3_5_SONNET
+        # Use GPT-4o-mini as primary choice (excellent value)
+        if remaining_budget >= 0.03:
+            return ModelType.GPT_4O_MINI
         
-        # Use premium model sparingly for complex queries
-        if query_complexity == "high" and remaining_budget > 0.08:
-            return ModelType.CLAUDE_3_7
+        # Use GPT-4.1-nano for ultra-cheap when budget is tight
+        if remaining_budget < 0.01:
+            return ModelType.GPT_4_1_NANO
         
-        # Balanced choice for most queries
-        return ModelType.CLAUDE_3_5_SONNET
+        # Use GPT-4.1-mini as balanced option
+        return ModelType.GPT_4_1_MINI
     
     def should_use_fallback(self, conversation_state) -> bool:
         """Use fallback when budget is low"""
@@ -222,15 +327,19 @@ class AggressiveCostManager(CostManagerInterface):
         return estimated_cost <= remaining_budget
     
     def get_recommended_model(self, query_complexity: str, conversation_state) -> ModelType:
-        """Always prefer cheaper models"""
+        """Aggressive cost management - use ultra-cheap GPT models"""
         remaining_budget = self.get_remaining_budget(conversation_state)
         
-        # Use cheapest model most of the time
-        if remaining_budget < 0.03:
-            return ModelType.GPT_3_5_TURBO
+        # Use GPT-4o-mini if we have reasonable budget
+        if remaining_budget >= 0.02:
+            return ModelType.GPT_4O_MINI
         
-        # Use mid-tier model sparingly
-        return ModelType.CLAUDE_3_5_SONNET
+        # Use GPT-4.1-nano for ultra-cheap when budget is very tight
+        if remaining_budget < 0.01:
+            return ModelType.GPT_4_1_NANO
+        
+        # Use GPT-4.1-mini as mid-tier option
+        return ModelType.GPT_4_1_MINI
     
     def should_use_fallback(self, conversation_state) -> bool:
         """Use fallback frequently"""

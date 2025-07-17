@@ -586,22 +586,47 @@
             <h1>🚗 Tire Sales Assistant</h1>
             <p>Your intelligent guide to finding the perfect tires</p>
             <div class="cost-tracker">
-                <div>💰 Session Cost: $<span id="session-cost">0.0764</span></div>
-                <div>🔧 Interactions: <span id="interaction-count">6</span></div>
+                <div>💰 Session Cost: $<span id="session-cost">0.0022</span></div>
+                <div>🔧 Interactions: <span id="interaction-count">4</span></div>
             </div>
         </div>
 
         <div class="main-form-area" id="main-form-area"><div class="ai-response" style="background:white;padding:20px;border-radius:12px;margin-bottom:20px;border:1px solid #e1e5e9;font-size:15px;line-height:1.6;box-shadow:0 2px 4px rgba(0,0,0,0.1);">
     <div style="background:white;padding:25px;border-radius:12px;margin-bottom:25px;border:1px solid #e1e5e9;font-size:16px;line-height:1.6;">
         <h3 style="color:#667eea;margin-bottom:15px;font-size:20px;">👋 Welcome to Your Tire Search Assistant!</h3>
-        <p style="margin-bottom:15px;">I'm here to help you find the perfect tires for your vehicle. Whether you need new tires, have questions about tire types, or want to understand what's best for your driving needs - I'm here to guide you through the process.</p>
-        <p style="margin-bottom:20px;"><strong>How can I help you today?</strong></p>
+        <p style="margin-bottom:15px;">I'm here to help you find the perfect tires for your vehicle. To get started, I'd like to know your vehicle information. What's the easiest way for you to share this?</p>
         
-        <form class="living-form" style="background:#f8f9fa;padding:20px;border-radius:8px;border:1px solid #e9ecef;" data-has-submit-handler="true" data-submitting="false" data-disabled="true">
+        <form class="living-form" style="background:#f8f9fa;padding:20px;border-radius:8px;border:1px solid #e9ecef;" data-submitting="false" data-disabled="true">
             <div style="margin-bottom:20px;">
-                <label style="display:block;margin-bottom:5px;font-weight:500;color:#495057;">Tell me what you're looking for</label>
-                <textarea name="user_request" placeholder="I want to get a set of new tires for my 2015 Honda Accord" style="width:100%;padding:12px;border:2px solid #e9ecef;border-radius:6px;font-size:14px;min-height:80px;resize:vertical;font-family: inherit;"></textarea>
-
+                <label style="display:block;margin-bottom:10px;font-weight:500;color:#495057;">How would you like to provide your vehicle information?</label>
+                
+                <div style="margin-bottom:15px;">
+                    <input type="radio" id="tire_size" name="info_method" value="not_sure" style="margin-right: 8px; background-color: rgb(248, 249, 250); cursor: default;" readonly="" disabled="">
+                    <label for="tire_size" style="font-weight:normal;cursor:pointer;">
+                        <strong>Tire size</strong> (e.g., 225/60R16) - I know my current tire size
+                    </label>
+                </div>
+                
+                <div style="margin-bottom:15px;">
+                    <input type="radio" id="vin" name="info_method" value="vin" style="margin-right:8px;">
+                    <label for="vin" style="font-weight:normal;cursor:pointer;">
+                        <strong>VIN number</strong> - I can find my vehicle identification number
+                    </label>
+                </div>
+                
+                <div style="margin-bottom:15px;">
+                    <input type="radio" id="make_model_year" name="info_method" value="make_model_year" style="margin-right:8px;">
+                    <label for="make_model_year" style="font-weight:normal;cursor:pointer;">
+                        <strong>Make/Model/Year</strong> - I know my vehicle details
+                    </label>
+                </div>
+                
+                <div style="margin-bottom:15px;">
+                    <input type="radio" id="not_sure" name="info_method" value="not_sure" style="margin-right:8px;">
+                    <label for="not_sure" style="font-weight:normal;cursor:pointer;">
+                        <strong>I'm not sure</strong> - Help me figure out what I need
+                    </label>
+                </div>
             </div>
             
             
@@ -609,34 +634,46 @@
     </div>
     </div>
         <div style="background:white;padding:25px;border-radius:12px;margin-bottom:25px;border:1px solid #e1e5e9;font-size:16px;line-height:1.6;">
-            It looks like we're just getting started! To help you find the right tires, let's begin by gathering some details about your vehicle. This will help us recommend the best options for you.
-            <form class="living-form" style="background:#f8f9fa;padding:20px;border-radius:8px;border:1px solid #e9ecef;" data-has-submit-handler="true" data-submitting="false" data-disabled="true">
+            <div style="margin-bottom:20px;"><p style="margin-bottom:15px;line-height:1.6;">No worries at all! Let me help you figure this out. The easiest way to start is usually to check your current tires. Look at the sidewall of any tire on your car – you'll see numbers like '225/60R16' or '205/55R16'.</p><p style="margin-bottom:15px;line-height:1.6;">If you can't find that, we can also look at your vehicle registration, insurance card, or the sticker inside your driver's door jamb.</p><p style="margin-bottom:15px;line-height:1.6;">What would you like to try first?</p></div>
+            <form class="living-form" style="background:#f8f9fa;padding:20px;border-radius:8px;border:1px solid #e9ecef;" data-submitting="false" data-disabled="true">
                 
         <div style="margin-bottom:20px;">
-            <label style="display:block;margin-bottom:5px;font-weight:500;color:#495057;">Make</label>
-            <input type="text" name="make" placeholder="e.g., Honda, Toyota, Ford, Kia, Hyundai" style="width: 100%; padding: 12px; border: 2px solid rgb(233, 236, 239); border-radius: 6px; font-size: 14px; font-family: inherit; background-color: rgb(248, 249, 250); cursor: default;" readonly="" disabled="">
+            <label style="display:block;margin-bottom:10px;font-weight:500;color:#495057;">Where would you like to look first?</label>
+            <div style="margin-left:10px;">
+                
+            <label style="display:flex;align-items:center;margin-bottom:10px;cursor:pointer;">
+                <input type="radio" name="info_source" value="I don&#39;t know" style="margin-right: 8px; background-color: rgb(248, 249, 250); cursor: default;" readonly="" disabled="">
+                <span>I'll check my tire sidewall</span>
+            </label>
+            
+            <label style="display:flex;align-items:center;margin-bottom:10px;cursor:pointer;">
+                <input type="radio" name="info_source" value="I&#39;ll look at my registration/insurance" style="margin-right:8px;">
+                <span>I'll look at my registration/insurance</span>
+            </label>
+            
+            <label style="display:flex;align-items:center;margin-bottom:10px;cursor:pointer;">
+                <input type="radio" name="info_source" value="I&#39;ll check the door jamb sticker" style="margin-right:8px;">
+                <span>I'll check the door jamb sticker</span>
+            </label>
+            
+            <label style="display:flex;align-items:center;margin-bottom:10px;cursor:pointer;">
+                <input type="radio" name="info_source" value="I need more specific help finding this" style="margin-right:8px;">
+                <span>I need more specific help finding this</span>
+            </label>
+            
+            <label style="display:flex;align-items:center;margin-bottom:10px;cursor:pointer;">
+                <input type="radio" name="info_source" value="I don&#39;t know" style="margin-right:8px;">
+                <span>I don't know</span>
+            </label>
+            
+            </div>
             
         </div>
         
 
         <div style="margin-bottom:20px;">
-            <label style="display:block;margin-bottom:5px;font-weight:500;color:#495057;">Model</label>
-            <input type="text" name="model" placeholder="e.g., Accord, Camry, F-150, Forte, Sonata" style="width:100%;padding:12px;border:2px solid #e9ecef;border-radius:6px;font-size:14px;font-family: inherit;">
-            
-        </div>
-        
-
-        <div style="margin-bottom:20px;">
-            <label style="display:block;margin-bottom:5px;font-weight:500;color:#495057;">Year</label>
-            <input type="number" name="year" min="1900" max="2030" style="width: 100%; padding: 12px; border: 2px solid rgb(233, 236, 239); border-radius: 6px; font-size: 14px; font-family: inherit; background-color: rgb(248, 249, 250); cursor: default;" readonly="" disabled="">
-            
-        </div>
-        
-
-        <div style="margin-bottom:20px;">
-            <label style="display:block;margin-bottom:5px;font-weight:500;color:#495057;">Anything else? (Optional)</label>
+            <label style="display:block;margin-bottom:5px;font-weight:500;color:#495057;">Additional Thoughts: (Optional)</label>
             <textarea name="additional_notes" placeholder="Ask a question, add details, or tell me anything..." rows="3" style="width:100%;padding:12px;border:2px solid #e9ecef;border-radius:6px;font-size:14px;resize:vertical;font-family: inherit;"></textarea>
-            
         </div>
         
                 
@@ -644,20 +681,46 @@
         </div>
         
         <div style="background:white;padding:25px;border-radius:12px;margin-bottom:25px;border:1px solid #e1e5e9;font-size:16px;line-height:1.6;">
-            Thank you for the information so far! I see you have a 2020 Kia. To help you find the perfect tires, I'll need to know the model of your Kia. This will help me ensure the tire recommendations are the right fit for your vehicle.
-            <form class="living-form" style="background:#f8f9fa;padding:20px;border-radius:8px;border:1px solid #e9ecef;" data-has-submit-handler="true" data-submitting="false" data-disabled="true">
+            <div style="margin-bottom:20px;"><p style="margin-bottom:15px;line-height:1.6;">No problem at all! Let's figure this out together. Since you're not sure about your vehicle information, we can start by helping you find your tire details.</p><p style="margin-bottom:15px;line-height:1.6;">The easiest place to check is on the sidewall of your current tires. Look for a series of numbers and letters like '225/60R16'. This tells us the tire size.</p><p style="margin-bottom:15px;line-height:1.6;">If you're unable to find that, your vehicle registration or insurance card usually has the make, model, and year information, which I can use to help you find the right tires.</p><p style="margin-bottom:15px;line-height:1.6;">Let’s narrow it down a bit more. Here are a few places to check:</p><p style="margin-bottom:15px;line-height:1.6;">1. **Tire Sidewall**: Look at any tire on your car.  2. **Vehicle Registration**: This document typically includes your vehicle's make, model, and year. 3. **Door Jamb Sticker**: Open your driver's door and look for a sticker on the door frame. It often shows tire pressure and sometimes tire size.</p><p style="margin-bottom:15px;line-height:1.6;">Which option would you like to try first?</p></div>
+            <form class="living-form" style="background:#f8f9fa;padding:20px;border-radius:8px;border:1px solid #e9ecef;" data-submitting="false" data-disabled="true">
                 
         <div style="margin-bottom:20px;">
-            <label style="display:block;margin-bottom:5px;font-weight:500;color:#495057;">Model</label>
-            <input type="text" name="model" placeholder="e.g., Accord, Camry, F-150, Forte, Sonata" style="width: 100%; padding: 12px; border: 2px solid rgb(233, 236, 239); border-radius: 6px; font-size: 14px; font-family: inherit; background-color: rgb(248, 249, 250); cursor: default;" readonly="" disabled="">
+            <label style="display:block;margin-bottom:10px;font-weight:500;color:#495057;">Where would you like to look first?</label>
+            <div style="margin-left:10px;">
+                
+            <label style="display:flex;align-items:center;margin-bottom:10px;cursor:pointer;">
+                <input type="radio" name="help_method" value="I&#39;ll check my registration/insurance" style="margin-right: 8px; background-color: rgb(248, 249, 250); cursor: default;" readonly="" disabled="">
+                <span>I'll check the tire sidewall</span>
+            </label>
+            
+            <label style="display:flex;align-items:center;margin-bottom:10px;cursor:pointer;">
+                <input type="radio" name="help_method" value="I&#39;ll check my registration/insurance" style="margin-right:8px;">
+                <span>I'll check my registration/insurance</span>
+            </label>
+            
+            <label style="display:flex;align-items:center;margin-bottom:10px;cursor:pointer;">
+                <input type="radio" name="help_method" value="I&#39;ll check the door jamb sticker" style="margin-right:8px;">
+                <span>I'll check the door jamb sticker</span>
+            </label>
+            
+            <label style="display:flex;align-items:center;margin-bottom:10px;cursor:pointer;">
+                <input type="radio" name="help_method" value="I need more specific help finding this" style="margin-right:8px;">
+                <span>I need more specific help finding this</span>
+            </label>
+            
+            <label style="display:flex;align-items:center;margin-bottom:10px;cursor:pointer;">
+                <input type="radio" name="help_method" value="I don&#39;t know" style="margin-right:8px;">
+                <span>I don't know</span>
+            </label>
+            
+            </div>
             
         </div>
         
 
         <div style="margin-bottom:20px;">
-            <label style="display:block;margin-bottom:5px;font-weight:500;color:#495057;">Anything else? (Optional)</label>
+            <label style="display:block;margin-bottom:5px;font-weight:500;color:#495057;">Additional Thoughts: (Optional)</label>
             <textarea name="additional_notes" placeholder="Ask a question, add details, or tell me anything..." rows="3" style="width:100%;padding:12px;border:2px solid #e9ecef;border-radius:6px;font-size:14px;resize:vertical;font-family: inherit;"></textarea>
-            
         </div>
         
                 
@@ -665,112 +728,12 @@
         </div>
         
         <div style="background:white;padding:25px;border-radius:12px;margin-bottom:25px;border:1px solid #e1e5e9;font-size:16px;line-height:1.6;">
-            It looks like you've provided the make and year of your vehicle as a 2020 Kia, but you're unsure about the model. That's okay! We can work through it together.
-
-To help us narrow down the right tires, let's see if we can pinpoint the model. If you're not sure, here are some popular Kia models from 2020 that might help jog your memory:
-
-1. Kia Forte
-2. Kia Optima
-3. Kia Sorento
-4. Kia Sportage
-
-If none of these sound right, feel free to skip this and we can figure it out later.
-            <form class="living-form" style="background:#f8f9fa;padding:20px;border-radius:8px;border:1px solid #e9ecef;" data-has-submit-handler="true" data-submitting="false" data-disabled="true">
+            <div style="margin-bottom:20px;"><p style="margin-bottom:15px;line-height:1.6;">"No worries at all! Checking your registration or insurance is a great way to find your vehicle details. They usually include the make, model, and year of your car, which will help me recommend the right tires for you.</p><p style="margin-bottom:15px;line-height:1.6;">Once you have that information, please share it with me. Here’s what I need:</p><p style="margin-bottom:15px;line-height:1.6;">1. **Vehicle Make** (e.g., Honda, Toyota) 2. **Vehicle Model** (e.g., Accord, Camry) 3. **Vehicle Year** (e.g., 2020)</p><p style="margin-bottom:15px;line-height:1.6;">Feel free to skip any of these if you're unsure, and you can also use the 'Additional Thoughts' box below if you need help finding this information!"</p></div>
+            <form class="living-form" style="background:#f8f9fa;padding:20px;border-radius:8px;border:1px solid #e9ecef;">
                 
         <div style="margin-bottom:20px;">
-            <label style="display:block;margin-bottom:5px;font-weight:500;color:#495057;">Model</label>
-            <input type="text" name="model" placeholder="e.g., Accord, Camry, F-150, Forte, Sonata" style="width: 100%; padding: 12px; border: 2px solid rgb(233, 236, 239); border-radius: 6px; font-size: 14px; font-family: inherit; background-color: rgb(248, 249, 250); cursor: default;" readonly="" disabled="">
-            
-        </div>
-        
-
-        <div style="margin-bottom:20px;">
-            <label style="display:block;margin-bottom:5px;font-weight:500;color:#495057;">Anything else? (Optional)</label>
+            <label style="display:block;margin-bottom:5px;font-weight:500;color:#495057;">Additional Thoughts: (Optional)</label>
             <textarea name="additional_notes" placeholder="Ask a question, add details, or tell me anything..." rows="3" style="width:100%;padding:12px;border:2px solid #e9ecef;border-radius:6px;font-size:14px;resize:vertical;font-family: inherit;"></textarea>
-            
-        </div>
-        
-                
-            <div class="submitted-indicator"><div style="text-align:center;padding:10px;background:#28a745;color:white;border-radius:6px;margin-top:10px;">✓ Form Submitted</div></div></form>
-        </div>
-        
-        <div style="background:white;padding:25px;border-radius:12px;margin-bottom:25px;border:1px solid #e1e5e9;font-size:16px;line-height:1.6;">
-            Great! I see we have your vehicle information as a 2020 Kia Forte. That's a compact car, and it's popular for its efficiency and modern features.
-
-To help you find the best tires, let's gather some more details. If you're unsure about anything, feel free to skip and we can come back to it:
-
-1. **Driving Patterns**: How do you typically use your car?
-            <form class="living-form" style="background:#f8f9fa;padding:20px;border-radius:8px;border:1px solid #e9ecef;" data-has-submit-handler="true" data-submitting="false" data-disabled="true">
-                
-        <div style="margin-bottom:20px;">
-            <label style="display:block;margin-bottom:5px;font-weight:500;color:#495057;">How do you typically use your car?</label>
-            <select name="driving_patterns" style="width: 100%; padding: 12px; border: 2px solid rgb(233, 236, 239); border-radius: 6px; font-size: 14px; font-family: inherit; background-color: rgb(248, 249, 250); cursor: default;" disabled="">
-                <option value="">Select an option</option>
-                <option value="Daily commute">Daily commute</option><option value="Highway driving">Highway driving</option><option value="Weekend trips">Weekend trips</option><option value="Long road trips">Long road trips</option><option value="Sporty driving">Sporty driving</option>
-            </select>
-            
-        </div>
-        
-
-        <div style="margin-bottom:20px;">
-            <label style="display:block;margin-bottom:5px;font-weight:500;color:#495057;">What's your budget range?</label>
-            <select name="budget_range" style="width: 100%; padding: 12px; border: 2px solid rgb(233, 236, 239); border-radius: 6px; font-size: 14px; font-family: inherit; background-color: rgb(248, 249, 250); cursor: default;" disabled="">
-                <option value="">Select an option</option>
-                <option value="Budget ($50-100 per tire)">Budget ($50-100 per tire)</option><option value="Mid-range ($100-200 per tire)">Mid-range ($100-200 per tire)</option><option value="Premium ($200+ per tire)">Premium ($200+ per tire)</option>
-            </select>
-            
-        </div>
-        
-
-        <div style="margin-bottom:20px;">
-            <label style="display:block;margin-bottom:5px;font-weight:500;color:#495057;">Quantity needed</label>
-            <input type="number" name="quantity_needed" style="width: 100%; padding: 12px; border: 2px solid rgb(233, 236, 239); border-radius: 6px; font-size: 14px; font-family: inherit; background-color: rgb(248, 249, 250); cursor: default;" readonly="" disabled="">
-            
-        </div>
-        
-
-        <div style="margin-bottom:20px;">
-            <label style="display:block;margin-bottom:5px;font-weight:500;color:#495057;">Anything else? (Optional)</label>
-            <textarea name="additional_notes" placeholder="Ask a question, add details, or tell me anything..." rows="3" style="width:100%;padding:12px;border:2px solid #e9ecef;border-radius:6px;font-size:14px;resize:vertical;font-family: inherit;"></textarea>
-            
-        </div>
-        
-                
-            <div class="submitted-indicator"><div style="text-align:center;padding:10px;background:#28a745;color:white;border-radius:6px;margin-top:10px;">✓ Form Submitted</div></div></form>
-        </div>
-        
-        <div style="background:white;padding:25px;border-radius:12px;margin-bottom:25px;border:1px solid #e1e5e9;font-size:16px;line-height:1.6;">
-            Thanks for providing the initial vehicle details! I see you have a 2020 Kia Forte. Now, let's gather a bit more information to find the best tires for you. 
-
-Since you're looking for three tires, let's also consider your driving habits and budget preferences. This will help us tailor the recommendations to your needs.
-
-Could you tell me about how you typically use your car? You can select from the options below, or skip it if you're unsure:
-            <form class="living-form" style="background:#f8f9fa;padding:20px;border-radius:8px;border:1px solid #e9ecef;" data-has-submit-handler="true">
-                
-        <div style="margin-bottom:20px;">
-            <label style="display:block;margin-bottom:5px;font-weight:500;color:#495057;">How do you typically use your car?</label>
-            <select name="driving_patterns" style="width:100%;padding:12px;border:2px solid #e9ecef;border-radius:6px;font-size:14px;font-family: inherit;">
-                <option value="">Select an option</option>
-                <option value="Daily commute">Daily commute</option><option value="Highway driving">Highway driving</option><option value="Weekend trips">Weekend trips</option><option value="Long road trips">Long road trips</option><option value="Sporty driving">Sporty driving</option>
-            </select>
-            
-        </div>
-        
-
-        <div style="margin-bottom:20px;">
-            <label style="display:block;margin-bottom:5px;font-weight:500;color:#495057;">What's your budget range per tire?</label>
-            <select name="budget_range" style="width:100%;padding:12px;border:2px solid #e9ecef;border-radius:6px;font-size:14px;font-family: inherit;">
-                <option value="">Select an option</option>
-                <option value="Budget ($50-100 per tire)">Budget ($50-100 per tire)</option><option value="Mid-range ($100-200 per tire)">Mid-range ($100-200 per tire)</option><option value="Premium ($200+ per tire)">Premium ($200+ per tire)</option>
-            </select>
-            
-        </div>
-        
-
-        <div style="margin-bottom:20px;">
-            <label style="display:block;margin-bottom:5px;font-weight:500;color:#495057;">Anything else? (Optional)</label>
-            <textarea name="additional_notes" placeholder="Ask a question, add details, or tell me anything..." rows="3" style="width:100%;padding:12px;border:2px solid #e9ecef;border-radius:6px;font-size:14px;resize:vertical;font-family: inherit;"></textarea>
-            
         </div>
         
                 <button type="submit" style="background:#667eea;color:white;border:none;padding:12px 30px;border-radius:6px;font-size:16px;cursor:pointer;transition:background-color 0.3s ease;">
@@ -810,20 +773,14 @@ Could you tell me about how you typically use your car? You can select from the 
             }
 
             setupEventListeners() {
-                // Remove existing listeners to prevent duplicates
-                if (this.formSubmitHandler) {
-                    document.removeEventListener('submit', this.formSubmitHandler);
-                }
-                
-                // Create bound handler
-                this.formSubmitHandler = (e) => {
-                    if (e.target.closest('form')) {
+                // Use event delegation for form submissions - more reliable than individual handlers
+                this.mainFormArea.addEventListener('submit', (e) => {
+                    if (e.target.tagName === 'FORM') {
                         e.preventDefault();
+                        console.log('Form submitted via delegation:', e.target);
                         this.handleFormSubmission(e.target);
                     }
-                };
-                
-                document.addEventListener('submit', this.formSubmitHandler);
+                });
             }
 
             async loadFirstForm() {
@@ -843,8 +800,11 @@ Could you tell me about how you typically use your car? You can select from the 
             }
 
             async handleFormSubmission(form) {
+                console.log('handleFormSubmission called with form:', form);
+                
                 // Prevent multiple submissions
                 if (form.dataset.submitting === 'true') {
+                    console.log('Form already submitting, ignoring');
                     return;
                 }
                 form.dataset.submitting = 'true';
@@ -880,14 +840,16 @@ Could you tell me about how you typically use your car? You can select from the 
                 
                 this.showLoading();
                 try {
+                    console.log('Calling API with form data...');
                     const response = await this.callChatAPI('Form submission', formObject);
+                    console.log('API response received:', response);
                     this.hideLoading();
                     this.addNewFormBelow(response);
                     this.updateCostTracker(response.cost_info);
                 } catch (error) {
+                    console.error('Form submission error:', error);
                     this.hideLoading();
                     this.renderError('Sorry, I encountered an error processing your form. Please try again.');
-                    console.error('Form submission error:', error);
                 } finally {
                     form.dataset.submitting = 'false';
                 }
@@ -1036,18 +998,9 @@ Could you tell me about how you typically use your car? You can select from the 
             }
 
             setupFormHandlers() {
-                // Handle form submissions within the AI response
-                const forms = this.mainFormArea.querySelectorAll('form');
-                forms.forEach(form => {
-                    // Only add event listener if it doesn't already exist
-                    if (!form.dataset.hasSubmitHandler) {
-                        form.dataset.hasSubmitHandler = 'true';
-                        form.addEventListener('submit', (e) => {
-                            e.preventDefault();
-                            this.handleFormSubmission(form);
-                        });
-                    }
-                });
+                // This method is now deprecated - using event delegation instead
+                // Keeping for backward compatibility but not needed
+                console.log('setupFormHandlers called - using event delegation instead');
             }
 
             renderError(message) {

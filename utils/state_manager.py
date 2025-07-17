@@ -79,6 +79,9 @@ class ConversationState:
     # Researched information
     researched_info: Dict[str, Any] = field(default_factory=dict)
     
+    # Last user message for web search detection
+    last_user_message: Optional[str] = field(default=None)
+    
     # Conversation tracking
     conversation_history: List[InteractionLog] = field(default_factory=list)
     

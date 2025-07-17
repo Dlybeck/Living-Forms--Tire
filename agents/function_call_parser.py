@@ -1,6 +1,6 @@
 import re
 import logging
-from typing import List, Tuple, Optional
+from typing import List, Tuple, Optional, Dict, Any
 from agents.form_builder import FormBuilder
 
 logger = logging.getLogger(__name__)
@@ -37,7 +37,7 @@ class FunctionCallParser:
             try:
                 field_html = self.form_builder.call_function(func_name, args_str)
                 form_fields.append(field_html)
-                logger.info(f"Successfully executed function call: {func_name}({args_str})")
+                logger.info(f"Successfully executed function call: {func_name}({args_str[:100]}...)")
             except Exception as e:
                 logger.error(f"Error executing function call {func_name}({args_str}): {str(e)}")
                 # Continue with other function calls even if one fails
@@ -48,9 +48,22 @@ class FunctionCallParser:
         # Generate complete form if we have fields
         if form_fields:
             form_html = self.form_builder.create_complete_form(form_fields, conversation_text)
-            return "", form_html  # Return empty conversation text since it's in the form
+            return conversation_text, form_html  # Return conversation text AND form HTML
         else:
-            return conversation_text, None
+            # Safety fallback: If no form fields were generated but AI tried to create a form,
+            # create a simple form with just the additional thoughts field
+            if '[FUNCTION_CALL]' in ai_response:
+                logger.warning("AI attempted to create form but no fields were generated. Creating safety fallback form.")
+                fallback_field = self.form_builder.create_textarea_field(
+                    name="additional_notes",
+                    label="Additional Thoughts: (Optional)",
+                    required=False,
+                    placeholder="Ask a question, add details, or tell me anything..."
+                )
+                form_html = self.form_builder.create_complete_form([fallback_field], conversation_text)
+                return conversation_text, form_html
+            else:
+                return conversation_text, None
     
     def _extract_function_calls(self, ai_response: str) -> List[Tuple[str, str]]:
         """
@@ -58,17 +71,43 @@ class FunctionCallParser:
         
         Expected format: [FUNCTION_CALL] function_name(arguments)
         """
-        # Pattern to match [FUNCTION_CALL] function_name(arguments)
-        pattern = r'\[FUNCTION_CALL\]\s*(\w+)\s*\((.*?)\)'
-        matches = re.findall(pattern, ai_response, re.DOTALL | re.IGNORECASE)
+        # Find all [FUNCTION_CALL] markers
+        call_markers = list(re.finditer(r'\[FUNCTION_CALL\]', ai_response, re.IGNORECASE))
         
         function_calls = []
-        for func_name, args_str in matches:
-            # Clean up the arguments string
-            args_str = args_str.strip()
-            if args_str:
-                function_calls.append((func_name, args_str))
-                logger.info(f"Found function call: {func_name}({args_str})")
+        for marker in call_markers:
+            # Find the function name after the marker
+            after_marker = ai_response[marker.end():].strip()
+            func_match = re.match(r'\s*(\w+)\s*\(', after_marker)
+            if not func_match:
+                continue
+                
+            func_name = func_match.group(1)
+            
+            # Find the opening parenthesis
+            open_paren_pos = after_marker.find('(')
+            if open_paren_pos == -1:
+                continue
+                
+            # Find the matching closing parenthesis
+            paren_count = 0
+            args_start = open_paren_pos + 1
+            args_end = args_start
+            
+            for i, char in enumerate(after_marker[args_start:], args_start):
+                if char == '(':
+                    paren_count += 1
+                elif char == ')':
+                    if paren_count == 0:
+                        args_end = i
+                        break
+                    paren_count -= 1
+            
+            if args_end > args_start:
+                args_str = after_marker[args_start:args_end].strip()
+                if args_str:
+                    function_calls.append((func_name, args_str))
+                    logger.info(f"Found function call: {func_name}({args_str[:100]}...)")  # Log first 100 chars to avoid truncation
         
         return function_calls
     
@@ -86,6 +125,13 @@ class FunctionCallParser:
         if first_match:
             # Extract text before the first function call
             conversation_text = ai_response[:first_match.start()].strip()
+            
+            # Debug: Log the extracted conversation text
+            logger.info(f"Extracted conversation text: '{conversation_text}'")
+            
+            # Clean up any leading/trailing quotes
+            conversation_text = conversation_text.strip('"\'')
+            
             return conversation_text
         
         return ai_response.strip()

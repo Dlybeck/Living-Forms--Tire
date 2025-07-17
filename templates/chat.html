@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tire Sales Assistant - Living Form</title>
+    <!-- Add Markdown rendering libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.5/dist/purify.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -110,6 +113,49 @@
             color: #333;
             border: 1px solid #e1e5e9;
             border-bottom-left-radius: 8px;
+        }
+
+        /* Markdown styling for AI responses */
+        .ai-response h1, .ai-response h2, .ai-response h3, .ai-response h4, .ai-response h5, .ai-response h6 {
+            margin-top: 0;
+            margin-bottom: 12px;
+            color: #333;
+            font-weight: 600;
+        }
+
+        .ai-response h3 {
+            font-size: 18px;
+            color: #667eea;
+        }
+
+        .ai-response p {
+            margin-bottom: 12px;
+        }
+
+        .ai-response ul, .ai-response ol {
+            margin-bottom: 12px;
+            padding-left: 20px;
+        }
+
+        .ai-response li {
+            margin-bottom: 6px;
+        }
+
+        .ai-response strong, .ai-response b {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .ai-response em, .ai-response i {
+            font-style: italic;
+        }
+
+        .ai-response code {
+            background: #f8f9fa;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
         }
 
         .message-info {
@@ -625,20 +671,14 @@
             }
 
             setupEventListeners() {
-                // Remove existing listeners to prevent duplicates
-                if (this.formSubmitHandler) {
-                    document.removeEventListener('submit', this.formSubmitHandler);
-                }
-                
-                // Create bound handler
-                this.formSubmitHandler = (e) => {
-                    if (e.target.closest('form')) {
+                // Use event delegation for form submissions - more reliable than individual handlers
+                this.mainFormArea.addEventListener('submit', (e) => {
+                    if (e.target.tagName === 'FORM') {
                         e.preventDefault();
+                        console.log('Form submitted via delegation:', e.target);
                         this.handleFormSubmission(e.target);
                     }
-                };
-                
-                document.addEventListener('submit', this.formSubmitHandler);
+                });
             }
 
             async loadFirstForm() {
@@ -658,8 +698,11 @@
             }
 
             async handleFormSubmission(form) {
+                console.log('handleFormSubmission called with form:', form);
+                
                 // Prevent multiple submissions
                 if (form.dataset.submitting === 'true') {
+                    console.log('Form already submitting, ignoring');
                     return;
                 }
                 form.dataset.submitting = 'true';
@@ -695,14 +738,21 @@
                 
                 this.showLoading();
                 try {
+                    console.log('Calling API with form data...');
                     const response = await this.callChatAPI('Form submission', formObject);
+                    console.log('API response received:', response);
+                    console.log('Response.response content:', response.response);
+                    console.log('Response.form_html:', response.form_html);
+                    console.log('About to call addNewFormBelow...');
                     this.hideLoading();
                     this.addNewFormBelow(response);
+                    console.log('addNewFormBelow completed');
                     this.updateCostTracker(response.cost_info);
                 } catch (error) {
+                    console.error('Form submission error:', error);
+                    console.error('Error details:', error.stack);
                     this.hideLoading();
                     this.renderError('Sorry, I encountered an error processing your form. Please try again.');
-                    console.error('Form submission error:', error);
                 } finally {
                     form.dataset.submitting = 'false';
                 }
@@ -737,7 +787,29 @@
                 
                 // For Living Form: Show AI response as conversation with embedded forms
                 if (response.response && response.response.trim()) {
-                    html += `<div class="ai-response" style="background:white;padding:20px;border-radius:12px;margin-bottom:20px;border:1px solid #e1e5e9;font-size:15px;line-height:1.6;box-shadow:0 2px 4px rgba(0,0,0,0.1);">${response.response}</div>`;
+                    // Debug logging
+                    console.log('renderForm - Response content:', response.response);
+                    console.log('renderForm - First 100 chars:', response.response.substring(0, 100));
+                    
+                    // Only treat as HTML if it starts with a block-level tag
+                    const blockLevelHtmlRegex = /^\s*<(div|form|h[1-6]|table|section|header|footer|main|article|nav|ul|ol|li|p|fieldset|legend|label|input|button|select|option|textarea|hr|br|img|span|style|script|link|meta|title|head|body|html)[\s>]/i;
+                    const isBlockHtml = blockLevelHtmlRegex.test(response.response);
+                    
+                    console.log('renderForm - Is block HTML?', isBlockHtml);
+                    
+                    if (isBlockHtml) {
+                        // If it contains HTML, render it directly (sanitized)
+                        console.log('renderForm - Rendering as HTML');
+                        const sanitizedHtml = DOMPurify.sanitize(response.response);
+                        html += `<div class="ai-response" style="background:white;padding:20px;border-radius:12px;margin-bottom:20px;border:1px solid #e1e5e9;font-size:15px;line-height:1.6;box-shadow:0 2px 4px rgba(0,0,0,0.1);">${sanitizedHtml}</div>`;
+                    } else {
+                        // If it's plain text/Markdown, convert to HTML
+                        console.log('renderForm - Rendering as Markdown');
+                        const markdownHtml = marked.parse(response.response);
+                        const sanitizedHtml = DOMPurify.sanitize(markdownHtml);
+                        console.log('renderForm - Markdown converted to:', markdownHtml);
+                        html += `<div class="ai-response" style="background:white;padding:20px;border-radius:12px;margin-bottom:20px;border:1px solid #e1e5e9;font-size:15px;line-height:1.6;box-shadow:0 2px 4px rgba(0,0,0,0.1);">${sanitizedHtml}</div>`;
+                    }
                 }
                 
                 // Show any extracted form HTML if present
@@ -811,6 +883,7 @@
 
             addNewFormBelow(response) {
                 // Add the new AI response below the current form
+                console.log('addNewFormBelow called with response:', response);
                 let html = '';
                 
                 // Show inline guidance if present
@@ -820,7 +893,29 @@
                 
                 // For Living Form: Show AI response as conversation with embedded forms
                 if (response.response && response.response.trim()) {
-                    html += `<div class="ai-response" style="background:white;padding:20px;border-radius:12px;margin-bottom:20px;border:1px solid #e1e5e9;font-size:15px;line-height:1.6;box-shadow:0 2px 4px rgba(0,0,0,0.1);">${response.response}</div>`;
+                    // Debug logging
+                    console.log('addNewFormBelow - Response content:', response.response);
+                    console.log('addNewFormBelow - First 100 chars:', response.response.substring(0, 100));
+                    
+                    // Only treat as HTML if it starts with a block-level tag
+                    const blockLevelHtmlRegex = /^\s*<(div|form|h[1-6]|table|section|header|footer|main|article|nav|ul|ol|li|p|fieldset|legend|label|input|button|select|option|textarea|hr|br|img|span|style|script|link|meta|title|head|body|html)[\s>]/i;
+                    const isBlockHtml = blockLevelHtmlRegex.test(response.response);
+                    
+                    console.log('addNewFormBelow - Is block HTML?', isBlockHtml);
+                    
+                    if (isBlockHtml) {
+                        // If it contains HTML, render it directly (sanitized)
+                        console.log('addNewFormBelow - Rendering as HTML');
+                        const sanitizedHtml = DOMPurify.sanitize(response.response);
+                        html += `<div class="ai-response" style="background:white;padding:20px;border-radius:12px;margin-bottom:20px;border:1px solid #e1e5e9;font-size:15px;line-height:1.6;box-shadow:0 2px 4px rgba(0,0,0,0.1);">${sanitizedHtml}</div>`;
+                    } else {
+                        // If it's plain text/Markdown, convert to HTML
+                        console.log('addNewFormBelow - Rendering as Markdown');
+                        const markdownHtml = marked.parse(response.response);
+                        const sanitizedHtml = DOMPurify.sanitize(markdownHtml);
+                        console.log('addNewFormBelow - Markdown converted to:', markdownHtml);
+                        html += `<div class="ai-response" style="background:white;padding:20px;border-radius:12px;margin-bottom:20px;border:1px solid #e1e5e9;font-size:15px;line-height:1.6;box-shadow:0 2px 4px rgba(0,0,0,0.1);">${sanitizedHtml}</div>`;
+                    }
                 }
                 
                 // Show any extracted form HTML if present
@@ -851,18 +946,9 @@
             }
 
             setupFormHandlers() {
-                // Handle form submissions within the AI response
-                const forms = this.mainFormArea.querySelectorAll('form');
-                forms.forEach(form => {
-                    // Only add event listener if it doesn't already exist
-                    if (!form.dataset.hasSubmitHandler) {
-                        form.dataset.hasSubmitHandler = 'true';
-                        form.addEventListener('submit', (e) => {
-                            e.preventDefault();
-                            this.handleFormSubmission(form);
-                        });
-                    }
-                });
+                // This method is now deprecated - using event delegation instead
+                // Keeping for backward compatibility but not needed
+                console.log('setupFormHandlers called - using event delegation instead');
             }
 
             renderError(message) {
@@ -892,6 +978,18 @@
         }
 
         document.addEventListener('DOMContentLoaded', () => {
+            // Test if Markdown libraries are loaded
+            console.log('Marked library loaded:', typeof marked);
+            console.log('DOMPurify library loaded:', typeof DOMPurify);
+            
+            // Test Markdown parsing
+            const testMarkdown = '**This is bold** and ### This is a header';
+            console.log('Test Markdown:', testMarkdown);
+            if (typeof marked !== 'undefined') {
+                const testHtml = marked.parse(testMarkdown);
+                console.log('Test Markdown converted to:', testHtml);
+            }
+            
             new LivingFormApp();
         });
     </script>

@@ -48,6 +48,11 @@ class FormBuilder:
     
     def create_textarea_field(self, name: str, label: Optional[str] = None, required: bool = False, placeholder: Optional[str] = None, rows: int = 3, help_text: Optional[str] = None) -> str:
         """Create a multi-line textarea field"""
+        # Safety check: Prevent AI from manually creating the additional_notes field
+        if name == "additional_notes":
+            logger.warning("AI attempted to manually create additional_notes field - this is automatically added. Skipping.")
+            return ""
+        
         self.field_count += 1
         if not label:
             label = name.replace('_', ' ').capitalize()
@@ -70,6 +75,11 @@ class FormBuilder:
             label = name.replace('_', ' ').capitalize()
         if options is None:
             options = []
+        
+        # Always add "I don't know" option to help users who are unsure
+        if "I don't know" not in options and "I'm not sure" not in options:
+            options.append("I don't know")
+        
         required_attr = "required" if required else ""
         options_html = ""
         for option in options:
@@ -95,6 +105,11 @@ class FormBuilder:
             label = name.replace('_', ' ').capitalize()
         if options is None:
             options = []
+        
+        # Always add "I don't know" option to help users who are unsure
+        if "I don't know" not in options and "I'm not sure" not in options:
+            options.append("I don't know")
+        
         required_attr = "required" if required else ""
         options_html = ""
         for option in options:
@@ -218,19 +233,45 @@ class FormBuilder:
         """
     
     def create_complete_form(self, fields_html: List[str], conversation_text: str = "", submit_text: str = "Continue") -> str:
-        """Create a complete form with conversation text and submit button. Always append an 'Anything else?' free-text field at the end."""
-        # Always add the free-text field at the end
-        additional_notes_field = self.create_textarea_field(
-            name="additional_notes",
-            label="Anything else? (Optional)",
-            required=False,
-            placeholder="Ask a question, add details, or tell me anything..."
-        )
-        fields_combined = "\n".join(fields_html + [additional_notes_field])
+        """Create a complete form with conversation text and submit button. Always append an 'Additional Thoughts' free-text field at the end."""
+        # Safety check: Ensure fields_html is a list
+        if not isinstance(fields_html, list):
+            fields_html = [str(fields_html)] if fields_html else []
+        
+        # Always add the free-text field at the end (create directly to avoid safety check)
+        additional_notes_field = f"""
+        <div style="margin-bottom:20px;">
+            <label style="display:block;margin-bottom:5px;font-weight:500;color:#495057;">Additional Thoughts: (Optional)</label>
+            <textarea name="additional_notes" placeholder="Ask a question, add details, or tell me anything..." rows="3" style="width:100%;padding:12px;border:2px solid #e9ecef;border-radius:6px;font-size:14px;resize:vertical;font-family: inherit;"></textarea>
+        </div>
+        """
+        
+        # Ensure we don't duplicate the additional_notes field if it already exists
+        existing_additional_notes = any('name="additional_notes"' in field for field in fields_html)
+        if existing_additional_notes:
+            fields_combined = "\n".join(fields_html)
+        else:
+            fields_combined = "\n".join(fields_html + [additional_notes_field])
+        
+        # Format conversation text with proper paragraphs and spacing
+        formatted_conversation = ""
+        if conversation_text and conversation_text.strip():
+            # Split by double newlines to preserve paragraph breaks
+            paragraphs = conversation_text.split('\n\n')
+            formatted_paragraphs = []
+            for paragraph in paragraphs:
+                if paragraph.strip():
+                    # Clean up single newlines and add proper spacing
+                    clean_paragraph = paragraph.replace('\n', ' ').strip()
+                    if clean_paragraph:
+                        formatted_paragraphs.append(f'<p style="margin-bottom:15px;line-height:1.6;">{clean_paragraph}</p>')
+            
+            if formatted_paragraphs:
+                formatted_conversation = f'<div style="margin-bottom:20px;">{"".join(formatted_paragraphs)}</div>'
         
         return f"""
         <div style="background:white;padding:25px;border-radius:12px;margin-bottom:25px;border:1px solid #e1e5e9;font-size:16px;line-height:1.6;">
-            {conversation_text}
+            {formatted_conversation}
             <form class="living-form" style="background:#f8f9fa;padding:20px;border-radius:8px;border:1px solid #e9ecef;">
                 {fields_combined}
                 <button type="submit" style="background:#667eea;color:white;border:none;padding:12px 30px;border-radius:6px;font-size:16px;cursor:pointer;transition:background-color 0.3s ease;">
@@ -294,9 +335,42 @@ class FormBuilder:
                 # Parse keyword arguments in format: name="value", label="value", required=True
                 args = {}
                 
-                # Pattern to match keyword arguments
-                # This handles: name="value", label="value", required=True, options=["a", "b"]
-                pattern = r'(\w+)\s*=\s*(?:"([^"]*)"|\'([^\']*)\'|(\w+)|\[([^\]]*)\])'
+                # Special handling for arrays - look for options=["item1", "item2", "item3"]
+                options_match = re.search(r'options\s*=\s*\[(.*?)\]', args_str, re.DOTALL)
+                if options_match:
+                    options_content = options_match.group(1)
+                    # Parse the options array
+                    options = []
+                    current_option = ""
+                    in_quotes = False
+                    quote_char = None
+                    
+                    for char in options_content:
+                        if char in ['"', "'"] and not in_quotes:
+                            in_quotes = True
+                            quote_char = char
+                        elif char == quote_char and in_quotes:
+                            in_quotes = False
+                            quote_char = None
+                        elif char == ',' and not in_quotes:
+                            if current_option.strip():
+                                options.append(current_option.strip().strip('"\''))
+                                current_option = ""
+                        else:
+                            current_option += char
+                    
+                    # Add the last option
+                    if current_option.strip():
+                        options.append(current_option.strip().strip('"\''))
+                    
+                    args["options"] = options
+                    
+                    # Remove the options part from args_str for further parsing
+                    args_str = re.sub(r'options\s*=\s*\[.*?\],?\s*', '', args_str, flags=re.DOTALL)
+                
+                # Pattern to match remaining keyword arguments
+                # This handles: name="value", label="value", required=True
+                pattern = r'(\w+)\s*=\s*(?:"([^"]*)"|\'([^\']*)\'|(\w+))'
                 matches = re.findall(pattern, args_str)
                 
                 for match in matches:
@@ -316,12 +390,6 @@ class FormBuilder:
                                 value = int(match[3])
                             except ValueError:
                                 value = match[3]
-                    elif match[4]:  # List/array
-                        # Parse the list content
-                        list_content = match[4]
-                        # Split by comma and clean up quotes
-                        items = [item.strip().strip('"\'') for item in list_content.split(',')]
-                        value = items
                     else:
                         continue
                     

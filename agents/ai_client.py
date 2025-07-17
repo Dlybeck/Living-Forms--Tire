@@ -1,5 +1,6 @@
 import os
 import logging
+import asyncio
 from typing import Dict, Optional, Any
 from agents.cost_manager import ModelType
 import aiohttp
@@ -25,19 +26,52 @@ class AIClient:
         
         # Model mappings
         self.model_mappings = {
+            # Claude models
+            ModelType.CLAUDE_SONNET_4: {
+                'provider': 'anthropic',
+                'model_name': 'claude-sonnet-4-20250514',
+                'max_tokens': 4096
+            },
             ModelType.CLAUDE_3_7: {
                 'provider': 'anthropic',
-                'model_name': 'claude-3-7-sonnet-20240229',  # Updated for July 2025
+                'model_name': 'claude-3-7-sonnet-20250219',
                 'max_tokens': 4096
             },
             ModelType.CLAUDE_3_5_SONNET: {
                 'provider': 'anthropic', 
-                'model_name': 'claude-3-5-sonnet-20241022',
+                'model_name': 'claude-3-5-sonnet-latest',
                 'max_tokens': 4096
             },
+            
+            # GPT models (primary choices)
             ModelType.GPT_4O: {
                 'provider': 'openai',
                 'model_name': 'gpt-4o',
+                'max_tokens': 4096
+            },
+            ModelType.GPT_4O_MINI: {
+                'provider': 'openai',
+                'model_name': 'gpt-4o-mini',
+                'max_tokens': 4096
+            },
+            ModelType.GPT_4O_MINI_SEARCH: {
+                'provider': 'openai',
+                'model_name': 'gpt-4o-mini-search-preview',
+                'max_tokens': 4096
+            },
+            ModelType.GPT_4O_SEARCH: {
+                'provider': 'openai',
+                'model_name': 'gpt-4o-search-preview',
+                'max_tokens': 4096
+            },
+            ModelType.GPT_4_1_MINI: {
+                'provider': 'openai',
+                'model_name': 'gpt-4.1-mini',
+                'max_tokens': 4096
+            },
+            ModelType.GPT_4_1_NANO: {
+                'provider': 'openai',
+                'model_name': 'gpt-4.1-nano',
                 'max_tokens': 4096
             },
             ModelType.GPT_3_5_TURBO: {
@@ -82,6 +116,85 @@ class AIClient:
             
         except Exception as e:
             logger.error(f"AI generation failed: {str(e)}")
+            # Try fallback to a working model if the primary model fails
+            if "404" in str(e) or "not_found" in str(e).lower() or "529" in str(e) or "overloaded" in str(e).lower():
+                logger.info("🚨 PRIMARY MODEL FAILED - trying cost-effective GPT fallbacks")
+                
+                # Try GPT-4o-mini first (excellent value)
+                try:
+                    logger.info("🔄 FALLBACK 1: Trying GPT-4o-mini")
+                    fallback_config = self.model_mappings[ModelType.GPT_4O_MINI]
+                    response = await self._call_openai_api(prompt, fallback_config)
+                    cost = self._calculate_cost(response['usage'], ModelType.GPT_4O_MINI)
+                    
+                    return {
+                        'text': response['text'],
+                        'cost': cost,
+                        'usage': response['usage'],
+                        'model': ModelType.GPT_4O_MINI.value,
+                        'provider': fallback_config['provider']
+                    }
+                except Exception as fallback1_error:
+                    logger.error(f"🚨 GPT-4o-mini FALLBACK FAILED: {str(fallback1_error)}")
+                    
+                    # Try GPT-4.1-nano (ultra-cheap)
+                    try:
+                        logger.info("🔄 FALLBACK 2: Trying GPT-4.1-nano")
+                        fallback_config = self.model_mappings[ModelType.GPT_4_1_NANO]
+                        response = await self._call_openai_api(prompt, fallback_config)
+                        cost = self._calculate_cost(response['usage'], ModelType.GPT_4_1_NANO)
+                        
+                        return {
+                            'text': response['text'],
+                            'cost': cost,
+                            'usage': response['usage'],
+                            'model': ModelType.GPT_4_1_NANO.value,
+                            'provider': fallback_config['provider']
+                        }
+                    except Exception as fallback2_error:
+                        logger.error(f"🚨 GPT-4.1-nano FALLBACK FAILED: {str(fallback2_error)}")
+                        
+                        # Try GPT-4o-mini-search as web search fallback (cheaper than Claude!)
+                        try:
+                            logger.info("🆘 WEB SEARCH FALLBACK: Trying GPT-4o-mini-search")
+                            search_config = self.model_mappings[ModelType.GPT_4O_MINI_SEARCH]
+                            response = await self._call_openai_api(prompt, search_config)
+                            cost = self._calculate_cost(response['usage'], ModelType.GPT_4O_MINI_SEARCH)
+                            
+                            return {
+                                'text': response['text'],
+                                'cost': cost,
+                                'usage': response['usage'],
+                                'model': ModelType.GPT_4O_MINI_SEARCH.value,
+                                'provider': search_config['provider']
+                            }
+                        except Exception as search_error:
+                            logger.error(f"GPT web search fallback also failed: {str(search_error)}")
+                            
+                            # Try Claude 3.5 Sonnet as absolute last resort
+                            try:
+                                logger.info("🆘 EMERGENCY FALLBACK: Trying Claude 3.5 Sonnet")
+                                claude_config = self.model_mappings[ModelType.CLAUDE_3_5_SONNET]
+                                response = await self._call_anthropic_api(prompt, claude_config)
+                                cost = self._calculate_cost(response['usage'], ModelType.CLAUDE_3_5_SONNET)
+                                
+                                return {
+                                    'text': response['text'],
+                                    'cost': cost,
+                                    'usage': response['usage'],
+                                    'model': ModelType.CLAUDE_3_5_SONNET.value,
+                                    'provider': claude_config['provider']
+                                }
+                            except Exception as claude_error:
+                                logger.error(f"Claude fallback also failed: {str(claude_error)}")
+                                # If even Claude fails, return a basic response
+                                return {
+                                    'text': "I'm experiencing some technical difficulties right now. Let me help you with basic tire information. What's your vehicle's make, model, and year?",
+                                    'cost': 0.0,
+                                    'usage': {'prompt_tokens': 0, 'completion_tokens': 0, 'total_tokens': 0},
+                                    'model': 'fallback_rules',
+                                    'provider': 'fallback'
+                                }
             raise
     
     def _build_prompt(self, user_message: str, conversation_context: Dict[str, Any], response_format: str, function_documentation: Optional[str] = None) -> str:
@@ -133,14 +246,16 @@ class AIClient:
         # Build the full prompt with context
         system_prompt = SYSTEM_PROMPT + function_instructions + f"""
         
+        **CRITICAL MEMORY CONTEXT - READ CAREFULLY:**
+        
         CURRENT CONVERSATION CONTEXT:
         - Conversation step: {current_step}
         - User knowledge level: {user_knowledge_level}
         
-        VEHICLE INFORMATION (ALREADY COLLECTED):
-        {vehicle_info if vehicle_info else "No vehicle information collected yet"}
+        **INFORMATION ALREADY COLLECTED (DO NOT ASK FOR THIS AGAIN):**
         
-
+        VEHICLE INFORMATION:
+        {vehicle_info if vehicle_info else "No vehicle information collected yet"}
         
         TIRE SPECIFICATIONS:
         {tire_specs if tire_specs else "No tire specifications collected yet"}
@@ -157,13 +272,21 @@ class AIClient:
         SPECIAL CONSIDERATIONS:
         {special_considerations if special_considerations else "No special considerations collected yet"}
         
-        MISSING INFORMATION:
+        **MISSING INFORMATION (ONLY ASK FOR THIS):**
         - Missing vehicle info: {missing_vehicle_info}
         - Missing tire specs: {missing_tire_specs}
         
-        USER'S LATEST MESSAGE: {user_message}
+        **CONVERSATION HISTORY SUMMARY:**
+        - Total interactions: {conversation_context.get('conversation_length', 0)}
+        - Ready for recommendations: {conversation_context.get('ready_for_recommendations', False)}
         
-        RESEARCHED INFORMATION: {conversation_context.get('researched_info', {})}
+        **RESEARCHED INFORMATION:**
+        {conversation_context.get('researched_info', {})}
+        
+        **USER'S LATEST MESSAGE:**
+        {user_message}
+        
+        **IMPORTANT: Always acknowledge what you already know before asking for new information. If the user has already provided vehicle details, acknowledge them and move to the next step.**
         """
         
         # Build the full prompt
@@ -188,6 +311,19 @@ class AIClient:
             'temperature': 0.7
         }
         
+        # Enable web search for search-enabled models
+        search_models = [
+            'gpt-4o-mini-search-preview',
+            'gpt-4o-search-preview'
+        ]
+        if model_config['model_name'] in search_models:
+            data['tools'] = [
+                {
+                    "type": "web_search"
+                }
+            ]
+            logger.info(f"🔍 Enabling web search for {model_config['model_name']}")
+        
         async with aiohttp.ClientSession() as session:
             async with session.post(self.base_urls['openai'], headers=headers, json=data) as response:
                 if response.status != 200:
@@ -206,7 +342,7 @@ class AIClient:
                 }
     
     async def _call_anthropic_api(self, prompt: str, model_config: Dict[str, Any]) -> Dict[str, Any]:
-        """Make API call to Anthropic"""
+        """Make API call to Anthropic with retry logic"""
         if not self.api_keys['anthropic']:
             raise ValueError("Anthropic API key not configured")
         
@@ -216,6 +352,7 @@ class AIClient:
             'anthropic-version': '2023-06-01'
         }
         
+        # Base data structure
         data = {
             'model': model_config['model_name'],
             'max_tokens': model_config['max_tokens'],
@@ -223,30 +360,76 @@ class AIClient:
             'temperature': 0.7
         }
         
-        async with aiohttp.ClientSession() as session:
-            async with session.post(self.base_urls['anthropic'], headers=headers, json=data) as response:
-                if response.status != 200:
-                    error_text = await response.text()
-                    raise Exception(f"Anthropic API error: {response.status} - {error_text}")
-                
-                result = await response.json()
-                
-                return {
-                    'text': result['content'][0]['text'],
-                    'usage': {
-                        'prompt_tokens': result['usage']['input_tokens'],
-                        'completion_tokens': result['usage']['output_tokens'],
-                        'total_tokens': result['usage']['input_tokens'] + result['usage']['output_tokens']
-                    }
+        # Add web search capability for Claude models that support it
+        web_search_models = [
+            'claude-3-7-sonnet-20250219', 
+            'claude-sonnet-4-20250514'
+        ]
+        if model_config['model_name'] in web_search_models:
+            data['tools'] = [
+                {
+                    "type": "web_search_20250305",
+                    "name": "web_search",
+                    "max_uses": 3  # Limit searches to control costs
                 }
+            ]
+        
+        # Retry logic for overloaded errors
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                async with aiohttp.ClientSession() as session:
+                    async with session.post(self.base_urls['anthropic'], headers=headers, json=data) as response:
+                        if response.status == 529:  # Overloaded
+                            if attempt < max_retries - 1:
+                                wait_time = (2 ** attempt) * 1  # Exponential backoff: 1s, 2s, 4s
+                                logger.warning(f"Anthropic API overloaded, retrying in {wait_time}s (attempt {attempt + 1}/{max_retries})")
+                                await asyncio.sleep(wait_time)
+                                continue
+                            else:
+                                error_text = await response.text()
+                                raise Exception(f"Anthropic API error: {response.status} - {error_text}")
+                        
+                        if response.status != 200:
+                            error_text = await response.text()
+                            raise Exception(f"Anthropic API error: {response.status} - {error_text}")
+                        
+                        result = await response.json()
+                        
+                        return {
+                            'text': result['content'][0]['text'],
+                            'usage': {
+                                'prompt_tokens': result['usage']['input_tokens'],
+                                'completion_tokens': result['usage']['output_tokens'],
+                                'total_tokens': result['usage']['input_tokens'] + result['usage']['output_tokens']
+                            }
+                        }
+            except Exception as e:
+                if attempt == max_retries - 1:
+                    raise e
+                if "529" in str(e) or "overloaded" in str(e).lower():
+                    wait_time = (2 ** attempt) * 1
+                    logger.warning(f"Retry attempt {attempt + 1} failed, waiting {wait_time}s before next attempt")
+                    await asyncio.sleep(wait_time)
+                else:
+                    raise e
+        
+        # This should never be reached, but just in case
+        raise Exception("Unexpected error in API call")
     
     def _calculate_cost(self, usage: Dict[str, int], model_type: ModelType) -> float:
         """Calculate cost based on token usage"""
-        # Cost per 1K tokens (July 2025 pricing)
+        # Cost per 1K tokens (updated 2025 pricing)
         pricing = {
-            ModelType.CLAUDE_3_7: {'input': 0.015, 'output': 0.075},
+            ModelType.CLAUDE_SONNET_4: {'input': 0.003, 'output': 0.015},
+            ModelType.CLAUDE_3_7: {'input': 0.003, 'output': 0.015},
             ModelType.CLAUDE_3_5_SONNET: {'input': 0.003, 'output': 0.015},
-            ModelType.GPT_4O: {'input': 0.005, 'output': 0.015},
+            ModelType.GPT_4O: {'input': 0.0025, 'output': 0.00125},
+            ModelType.GPT_4O_MINI: {'input': 0.00015, 'output': 0.000075},
+            ModelType.GPT_4O_MINI_SEARCH: {'input': 0.00015, 'output': 0.00015},
+            ModelType.GPT_4O_SEARCH: {'input': 0.0025, 'output': 0.0025},
+            ModelType.GPT_4_1_MINI: {'input': 0.0004, 'output': 0.0001},
+            ModelType.GPT_4_1_NANO: {'input': 0.0001, 'output': 0.000025},
             ModelType.GPT_3_5_TURBO: {'input': 0.001, 'output': 0.002}
         }
         
