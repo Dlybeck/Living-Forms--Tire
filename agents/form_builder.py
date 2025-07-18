@@ -241,7 +241,7 @@ class FormBuilder:
         # Always add the free-text field at the end (create directly to avoid safety check)
         additional_notes_field = f"""
         <div style="margin-bottom:20px;">
-            <label style="display:block;margin-bottom:5px;font-weight:500;color:#495057;">Additional Thoughts: (Optional)</label>
+            <label style="display:block;margin-bottom:5px;font-weight:500;color:#495057;">Confused? Need help?</label>
             <textarea name="additional_notes" placeholder="Ask a question, add details, or tell me anything..." rows="3" style="width:100%;padding:12px;border:2px solid #e9ecef;border-radius:6px;font-size:14px;resize:vertical;font-family: inherit;"></textarea>
         </div>
         """
@@ -253,21 +253,10 @@ class FormBuilder:
         else:
             fields_combined = "\n".join(fields_html + [additional_notes_field])
         
-        # Format conversation text with proper paragraphs and spacing
+        # Format conversation text with proper paragraphs and text formatting
         formatted_conversation = ""
         if conversation_text and conversation_text.strip():
-            # Split by double newlines to preserve paragraph breaks
-            paragraphs = conversation_text.split('\n\n')
-            formatted_paragraphs = []
-            for paragraph in paragraphs:
-                if paragraph.strip():
-                    # Clean up single newlines and add proper spacing
-                    clean_paragraph = paragraph.replace('\n', ' ').strip()
-                    if clean_paragraph:
-                        formatted_paragraphs.append(f'<p style="margin-bottom:15px;line-height:1.6;">{clean_paragraph}</p>')
-            
-            if formatted_paragraphs:
-                formatted_conversation = f'<div style="margin-bottom:20px;">{"".join(formatted_paragraphs)}</div>'
+            formatted_conversation = f'<div style="margin-bottom:20px;">{self._format_conversation_text(conversation_text)}</div>'
         
         return f"""
         <div style="background:white;padding:25px;border-radius:12px;margin-bottom:25px;border:1px solid #e1e5e9;font-size:16px;line-height:1.6;">
@@ -280,6 +269,50 @@ class FormBuilder:
             </form>
         </div>
         """
+
+    def _format_conversation_text(self, text: str) -> str:
+        """Format conversation text with simple text formatting (same as frontend)"""
+        import html
+        import re
+        
+        # Escape HTML first
+        formatted = html.escape(text)
+        
+        # Process formatting BEFORE converting line breaks to <br> tags
+        # Convert ### headers to <h3>
+        formatted = re.sub(r'^### (.*?)$', r'__HEADER_START__\1__HEADER_END__', formatted, flags=re.MULTILINE)
+        
+        # Convert numbered lists (1. item)
+        formatted = re.sub(r'^(\d+)\. (.*?)$', r'__LIST_START__\1__LIST_MID__\2__LIST_END__', formatted, flags=re.MULTILINE)
+        
+        # Convert bullet points (- item)
+        formatted = re.sub(r'^- (.*?)$', r'__BULLET_START__\1__BULLET_END__', formatted, flags=re.MULTILINE)
+        
+        # Convert **bold** to <strong>
+        formatted = re.sub(r'\*\*(.*?)\*\*', r'<strong>\1</strong>', formatted)
+        
+        # Convert code blocks (`code`)
+        formatted = re.sub(r'`(.*?)`', r'<code style="background:#f8f9fa;padding:2px 6px;border-radius:4px;font-family:monospace;font-size:0.9em;">\1</code>', formatted)
+        
+        # Now convert line breaks to <br> tags
+        formatted = formatted.replace('\n', '<br>')
+        
+        # Replace placeholders with actual HTML
+        formatted = re.sub(r'__HEADER_START__(.*?)__HEADER_END__', r'</p><h3 style="color:#667eea;margin:15px 0 10px 0;font-size:18px;">\1</h3><p style="margin-bottom:12px;">', formatted)
+        formatted = re.sub(r'__LIST_START__(.*?)__LIST_MID__(.*?)__LIST_END__', r'</p><div style="margin:8px 0;"><strong>\1.</strong> \2</div><p style="margin-bottom:12px;">', formatted)
+        formatted = re.sub(r'__BULLET_START__(.*?)__BULLET_END__', r'</p><div style="margin:8px 0;margin-left:15px;">• \1</div><p style="margin-bottom:12px;">', formatted)
+        
+        # Add paragraph breaks for double line breaks
+        formatted = re.sub(r'(<br>){2,}', r'</p><p style="margin-bottom:12px;">', formatted)
+        
+        # Wrap in paragraph tags
+        formatted = f'<p style="margin-bottom:12px;">{formatted}</p>'
+        
+        # Clean up any empty paragraphs or malformed HTML
+        formatted = re.sub(r'<p[^>]*>\s*</p>', '', formatted)  # Remove empty paragraphs
+        formatted = re.sub(r'</p>\s*<p[^>]*>', '</p><p style="margin-bottom:12px;">', formatted)  # Normalize paragraph tags
+        
+        return formatted
     
     def call_function(self, func_name: str, args_str: str) -> str:
         """Call a form builder function by name with arguments"""

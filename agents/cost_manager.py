@@ -19,11 +19,9 @@ class ModelType(Enum):
     CLAUDE_3_7 = "claude-3.7"
     CLAUDE_3_5_SONNET = "claude-3.5-sonnet"
     
-    # GPT models (primary choices)
-    GPT_4O = "gpt-4o"                                    # $2.50/$1.25 per 1M tokens
-    GPT_4O_MINI = "gpt-4o-mini"                          # $0.15/$0.075 per 1M tokens (BEST VALUE)
-    GPT_4O_MINI_SEARCH = "gpt-4o-mini-search-preview"    # $0.15 per 1M tokens (WITH WEB SEARCH!)
-    GPT_4O_SEARCH = "gpt-4o-search-preview"              # $2.50 per 1M tokens (WITH WEB SEARCH!)
+    # GPT models (primary choices with built-in web search)
+    GPT_4O = "gpt-4o"                                    # $2.50/$1.25 per 1M tokens (WITH WEB SEARCH)
+    GPT_4O_MINI = "gpt-4o-mini"                          # $0.15/$0.075 per 1M tokens (WITH WEB SEARCH - BEST VALUE)
     GPT_4_1_MINI = "gpt-4.1-mini"                        # $0.40/$0.10 per 1M tokens
     GPT_4_1_NANO = "gpt-4.1-nano"                        # $0.10/$0.025 per 1M tokens (CHEAPEST)
     GPT_3_5_TURBO = "gpt-3.5-turbo"                      # Legacy fallback
@@ -54,26 +52,16 @@ class CostManagerInterface(ABC):
                 'best_for': ['balanced_tasks', 'tire_recommendations']
             },
             
-            # GPT models (primary choices - much cheaper!)
+            # GPT models (primary choices - much cheaper, with built-in web search!)
             ModelType.GPT_4O: {
                 'input_cost': 0.0025,   # $2.50 per 1M tokens
                 'output_cost': 0.00125, # $1.25 per 1M tokens
-                'best_for': ['conversational_flow', 'structured_output', 'reliability']
+                'best_for': ['conversational_flow', 'structured_output', 'reliability', 'web_search']
             },
             ModelType.GPT_4O_MINI: {
                 'input_cost': 0.00015,  # $0.15 per 1M tokens (EXCELLENT VALUE!)
                 'output_cost': 0.000075,# $0.075 per 1M tokens
-                'best_for': ['cost_effective', 'tire_recommendations', 'general_chat']
-            },
-            ModelType.GPT_4O_MINI_SEARCH: {
-                'input_cost': 0.00015,  # $0.15 per 1M tokens (WITH WEB SEARCH!)
-                'output_cost': 0.00015, # $0.15 per 1M tokens
-                'best_for': ['web_search', 'cost_effective', 'tire_recommendations']
-            },
-            ModelType.GPT_4O_SEARCH: {
-                'input_cost': 0.0025,   # $2.50 per 1M tokens (WITH WEB SEARCH!)
-                'output_cost': 0.0025,  # $2.50 per 1M tokens
-                'best_for': ['web_search', 'premium_quality', 'complex_queries']
+                'best_for': ['cost_effective', 'tire_recommendations', 'general_chat', 'web_search']
             },
             ModelType.GPT_4_1_MINI: {
                 'input_cost': 0.0004,   # $0.40 per 1M tokens
@@ -173,85 +161,83 @@ class GenerousCostManager(CostManagerInterface):
         return remaining_budget > estimated_cost
     
     def get_recommended_model(self, query_complexity: str, conversation_state) -> ModelType:
-        """Cost-effective GPT model selection - prioritize GPT models with web search"""
+        """Cost-effective GPT model selection with web search capability"""
         remaining_budget = self.get_remaining_budget(conversation_state)
-        
-        # Check if this query might benefit from web search
         needs_web_search = self._needs_web_search(query_complexity, conversation_state)
         
-        # If web search is needed, use GPT models with web search (much cheaper than Claude!)
+        # Prioritize web search models (GPT-4o and GPT-4o-mini) when web search is needed
         if needs_web_search:
-            if remaining_budget >= 0.05:  # 5 cents for premium web search
-                logger.info("Using GPT-4o-search for premium web search capability")
-                return ModelType.GPT_4O_SEARCH
-            elif remaining_budget >= 0.02:  # 2 cents for cost-effective web search
-                logger.info("Using GPT-4o-mini-search for cost-effective web search")
-                return ModelType.GPT_4O_MINI_SEARCH
-            else:
-                # Fall back to regular GPT-4o-mini if budget is too tight for web search
-                logger.info("Budget too tight for web search, using regular GPT-4o-mini")
+            if query_complexity == "high" and remaining_budget >= 0.05:
+                logger.info("🔍 Using GPT-4o for high complexity query with web search")
+                return ModelType.GPT_4O
+            elif remaining_budget >= 0.02:
+                logger.info("🔍 Using GPT-4o-mini for web search (excellent value)")
                 return ModelType.GPT_4O_MINI
+            else:
+                logger.info("🔍 Using GPT-4o-mini for web search despite tight budget")
+                return ModelType.GPT_4O_MINI  # Still use web search even on tight budget
         
-        # Regular queries without web search needs
-        # Use GPT-4o-mini as primary choice (EXCELLENT value - 20x cheaper than Claude!)
+        # Regular model selection for non-web-search queries
+        if query_complexity == "high" and remaining_budget >= 0.05:
+            logger.info("Using GPT-4o for high complexity query")
+            return ModelType.GPT_4O
+        elif query_complexity == "medium" and remaining_budget >= 0.03:
+            logger.info("Using GPT-4o for medium complexity query")
+            return ModelType.GPT_4O
+        
+        # Use GPT-4o-mini as fallback for low complexity or when budget is tighter
         if remaining_budget >= 0.02:  # 2 cents remaining
+            logger.info("Using GPT-4o-mini for low complexity or budget constraints")
             return ModelType.GPT_4O_MINI
         
-        # Use GPT-4o for complex queries when we have budget
-        if query_complexity == "high" and remaining_budget >= 0.05:
-            return ModelType.GPT_4O
+        # Use GPT-4.1-mini as balanced option for very tight budget
+        if remaining_budget >= 0.01:
+            logger.info("Using GPT-4.1-mini for tight budget")
+            return ModelType.GPT_4_1_MINI
         
         # Use GPT-4.1-nano for ultra-cheap when budget is very tight
         if remaining_budget < 0.01:  # Less than 1 cent
+            logger.info("Using GPT-4.1-nano for very tight budget")
             return ModelType.GPT_4_1_NANO
         
-        # Use GPT-4.1-mini as balanced option
-        if remaining_budget >= 0.01:
-            return ModelType.GPT_4_1_MINI
-        
         # Emergency fallback to cheapest option
+        logger.info("Emergency fallback to GPT-4.1-nano")
         return ModelType.GPT_4_1_NANO
     
     def _needs_web_search(self, query_complexity: str, conversation_state) -> bool:
-        """Determine if the query would benefit from web search capabilities"""
-        # Check if we have vehicle info but might need trim levels
+        """Determine when to search for tire size information"""
+        
         vehicle_info = conversation_state.vehicle_info
-        if vehicle_info.get('make') and vehicle_info.get('model') and vehicle_info.get('year'):
-            # We have basic vehicle info, might need trim levels or tire specs
-            if not vehicle_info.get('trim') and not conversation_state.tire_specs.get('current_tire_size'):
-                return True
+        last_message = getattr(conversation_state, 'last_user_message', '').lower()
         
-        # Check if user is asking for specific vehicle information
-        if hasattr(conversation_state, 'last_user_message'):
-            last_message = conversation_state.last_user_message.lower()
-            web_search_indicators = [
-                'trim', 'package', 'edition', 'specification', 'specs',
-                'what tires', 'tire size', 'fits', 'compatible',
-                'recommendation', 'best tires', 'reviews'
-            ]
-            if any(indicator in last_message for indicator in web_search_indicators):
-                return True
+        # Don't search for initial welcome interactions
+        if 'form submission with: info_method:' in last_message and 'not_sure' in last_message:
+            logger.info("🚫 No web search needed: Initial form interaction")
+            return False
         
-        return False
+        # Don't search if we already have tire size
+        if conversation_state.tire_specs.get('current_tire_size'):
+            logger.info("🚫 No web search needed: Already have tire size")
+            return False
         
-        # Check if we have vehicle info but might need trim levels
-        vehicle_info = conversation_state.vehicle_info
-        if vehicle_info.get('make') and vehicle_info.get('model') and vehicle_info.get('year'):
-            # We have basic vehicle info, might need trim levels or tire specs
-            if not vehicle_info.get('trim') and not conversation_state.tire_specs.get('current_tire_size'):
-                return True
+        # Search if we have complete vehicle info (make, model, year) and no tire size
+        if (vehicle_info.get('make') and vehicle_info.get('model') and vehicle_info.get('year')):
+            logger.info(f"🔍 Web search needed: Have complete vehicle info ({vehicle_info.get('year')} {vehicle_info.get('make')} {vehicle_info.get('model')}) but no tire size")
+            return True
         
-        # Check if user is asking for specific vehicle information
-        if hasattr(conversation_state, 'last_user_message'):
-            last_message = conversation_state.last_user_message.lower()
-            web_search_indicators = [
-                'trim', 'package', 'edition', 'specification', 'specs',
-                'what tires', 'tire size', 'fits', 'compatible',
-                'recommendation', 'best tires', 'reviews'
-            ]
-            if any(indicator in last_message for indicator in web_search_indicators):
-                return True
+        # Search if user explicitly asks for tire size
+        tire_size_keywords = ['tire size', 'what size', 'size tire', 'factory tire', 'oem tire']
+        if any(keyword in last_message for keyword in tire_size_keywords):
+            logger.info("🔍 Web search needed: User explicitly asking for tire size")
+            return True
         
+        # Search if user asks about trim levels or specifications
+        spec_keywords = ['trim', 'trim level', 'package', 'specification', 'spec']
+        if any(keyword in last_message for keyword in spec_keywords):
+            logger.info("🔍 Web search needed: User asking about specifications")
+            return True
+        
+        logger.info("🚫 No web search needed: Conditions not met")
         return False
     
     def should_use_fallback(self, conversation_state) -> bool:

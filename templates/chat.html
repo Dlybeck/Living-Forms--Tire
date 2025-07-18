@@ -4,8 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tire Sales Assistant - Living Form</title>
-    <!-- Add Markdown rendering libraries -->
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- Add HTML sanitization library -->
     <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.5/dist/purify.min.js"></script>
     <style>
         * {
@@ -115,7 +114,7 @@
             border-bottom-left-radius: 8px;
         }
 
-        /* Markdown styling for AI responses */
+        /* Text formatting styling for AI responses */
         .ai-response h1, .ai-response h2, .ai-response h3, .ai-response h4, .ai-response h5, .ai-response h6 {
             margin-top: 0;
             margin-bottom: 12px;
@@ -741,16 +740,11 @@
                     console.log('Calling API with form data...');
                     const response = await this.callChatAPI('Form submission', formObject);
                     console.log('API response received:', response);
-                    console.log('Response.response content:', response.response);
-                    console.log('Response.form_html:', response.form_html);
-                    console.log('About to call addNewFormBelow...');
                     this.hideLoading();
                     this.addNewFormBelow(response);
-                    console.log('addNewFormBelow completed');
                     this.updateCostTracker(response.cost_info);
                 } catch (error) {
                     console.error('Form submission error:', error);
-                    console.error('Error details:', error.stack);
                     this.hideLoading();
                     this.renderError('Sorry, I encountered an error processing your form. Please try again.');
                 } finally {
@@ -787,28 +781,18 @@
                 
                 // For Living Form: Show AI response as conversation with embedded forms
                 if (response.response && response.response.trim()) {
-                    // Debug logging
-                    console.log('renderForm - Response content:', response.response);
-                    console.log('renderForm - First 100 chars:', response.response.substring(0, 100));
-                    
                     // Only treat as HTML if it starts with a block-level tag
                     const blockLevelHtmlRegex = /^\s*<(div|form|h[1-6]|table|section|header|footer|main|article|nav|ul|ol|li|p|fieldset|legend|label|input|button|select|option|textarea|hr|br|img|span|style|script|link|meta|title|head|body|html)[\s>]/i;
                     const isBlockHtml = blockLevelHtmlRegex.test(response.response);
                     
-                    console.log('renderForm - Is block HTML?', isBlockHtml);
-                    
                     if (isBlockHtml) {
                         // If it contains HTML, render it directly (sanitized)
-                        console.log('renderForm - Rendering as HTML');
                         const sanitizedHtml = DOMPurify.sanitize(response.response);
                         html += `<div class="ai-response" style="background:white;padding:20px;border-radius:12px;margin-bottom:20px;border:1px solid #e1e5e9;font-size:15px;line-height:1.6;box-shadow:0 2px 4px rgba(0,0,0,0.1);">${sanitizedHtml}</div>`;
                     } else {
-                        // If it's plain text/Markdown, convert to HTML
-                        console.log('renderForm - Rendering as Markdown');
-                        const markdownHtml = marked.parse(response.response);
-                        const sanitizedHtml = DOMPurify.sanitize(markdownHtml);
-                        console.log('renderForm - Markdown converted to:', markdownHtml);
-                        html += `<div class="ai-response" style="background:white;padding:20px;border-radius:12px;margin-bottom:20px;border:1px solid #e1e5e9;font-size:15px;line-height:1.6;box-shadow:0 2px 4px rgba(0,0,0,0.1);">${sanitizedHtml}</div>`;
+                        // Apply simple text formatting instead of Markdown
+                        const formattedText = this.formatAIResponse(response.response);
+                        html += `<div class="ai-response" style="background:white;padding:20px;border-radius:12px;margin-bottom:20px;border:1px solid #e1e5e9;font-size:15px;line-height:1.6;box-shadow:0 2px 4px rgba(0,0,0,0.1);">${formattedText}</div>`;
                     }
                 }
                 
@@ -883,7 +867,6 @@
 
             addNewFormBelow(response) {
                 // Add the new AI response below the current form
-                console.log('addNewFormBelow called with response:', response);
                 let html = '';
                 
                 // Show inline guidance if present
@@ -893,28 +876,18 @@
                 
                 // For Living Form: Show AI response as conversation with embedded forms
                 if (response.response && response.response.trim()) {
-                    // Debug logging
-                    console.log('addNewFormBelow - Response content:', response.response);
-                    console.log('addNewFormBelow - First 100 chars:', response.response.substring(0, 100));
-                    
                     // Only treat as HTML if it starts with a block-level tag
                     const blockLevelHtmlRegex = /^\s*<(div|form|h[1-6]|table|section|header|footer|main|article|nav|ul|ol|li|p|fieldset|legend|label|input|button|select|option|textarea|hr|br|img|span|style|script|link|meta|title|head|body|html)[\s>]/i;
                     const isBlockHtml = blockLevelHtmlRegex.test(response.response);
                     
-                    console.log('addNewFormBelow - Is block HTML?', isBlockHtml);
-                    
                     if (isBlockHtml) {
                         // If it contains HTML, render it directly (sanitized)
-                        console.log('addNewFormBelow - Rendering as HTML');
                         const sanitizedHtml = DOMPurify.sanitize(response.response);
                         html += `<div class="ai-response" style="background:white;padding:20px;border-radius:12px;margin-bottom:20px;border:1px solid #e1e5e9;font-size:15px;line-height:1.6;box-shadow:0 2px 4px rgba(0,0,0,0.1);">${sanitizedHtml}</div>`;
                     } else {
-                        // If it's plain text/Markdown, convert to HTML
-                        console.log('addNewFormBelow - Rendering as Markdown');
-                        const markdownHtml = marked.parse(response.response);
-                        const sanitizedHtml = DOMPurify.sanitize(markdownHtml);
-                        console.log('addNewFormBelow - Markdown converted to:', markdownHtml);
-                        html += `<div class="ai-response" style="background:white;padding:20px;border-radius:12px;margin-bottom:20px;border:1px solid #e1e5e9;font-size:15px;line-height:1.6;box-shadow:0 2px 4px rgba(0,0,0,0.1);">${sanitizedHtml}</div>`;
+                        // Apply simple text formatting instead of Markdown
+                        const formattedText = this.formatAIResponse(response.response);
+                        html += `<div class="ai-response" style="background:white;padding:20px;border-radius:12px;margin-bottom:20px;border:1px solid #e1e5e9;font-size:15px;line-height:1.6;box-shadow:0 2px 4px rgba(0,0,0,0.1);">${formattedText}</div>`;
                     }
                 }
                 
@@ -970,6 +943,38 @@
                 this.loading.classList.remove('active');
             }
 
+            formatAIResponse(text) {
+                // Simple text formatting without complex Markdown parsing
+                let formatted = this.escapeHtml(text);
+                
+                // Convert line breaks to <br> tags
+                formatted = formatted.replace(/\n/g, '<br>');
+                
+                // Convert **bold** to <strong>
+                formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+                
+                // Convert ### headers to <h3>
+                formatted = formatted.replace(/^### (.*?)$/gm, '<h3 style="color:#667eea;margin:15px 0 10px 0;font-size:18px;">$1</h3>');
+                
+                // Convert numbered lists (1. item)
+                formatted = formatted.replace(/^(\d+)\. (.*?)$/gm, '<div style="margin:8px 0;"><strong>$1.</strong> $2</div>');
+                
+                // Convert bullet points (- item)
+                formatted = formatted.replace(/^- (.*?)$/gm, '<div style="margin:8px 0;margin-left:15px;">• $1</div>');
+                
+                // Convert code blocks (`code`)
+                formatted = formatted.replace(/`(.*?)`/g, '<code style="background:#f8f9fa;padding:2px 6px;border-radius:4px;font-family:monospace;font-size:0.9em;">$1</code>');
+                
+                // Add paragraph breaks for double line breaks
+                formatted = formatted.replace(/(<br>){2,}/g, '</p><p style="margin-bottom:12px;">');
+                
+                // Wrap in paragraph tags
+                formatted = `<p style="margin-bottom:12px;">${formatted}</p>`;
+                
+                // Sanitize the final HTML for security
+                return DOMPurify.sanitize(formatted);
+            }
+
             escapeHtml(text) {
                 const div = document.createElement('div');
                 div.textContent = text;
@@ -978,18 +983,6 @@
         }
 
         document.addEventListener('DOMContentLoaded', () => {
-            // Test if Markdown libraries are loaded
-            console.log('Marked library loaded:', typeof marked);
-            console.log('DOMPurify library loaded:', typeof DOMPurify);
-            
-            // Test Markdown parsing
-            const testMarkdown = '**This is bold** and ### This is a header';
-            console.log('Test Markdown:', testMarkdown);
-            if (typeof marked !== 'undefined') {
-                const testHtml = marked.parse(testMarkdown);
-                console.log('Test Markdown converted to:', testHtml);
-            }
-            
             new LivingFormApp();
         });
     </script>

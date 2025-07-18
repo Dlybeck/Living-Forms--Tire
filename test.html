@@ -4,6 +4,8 @@
     
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tire Sales Assistant - Living Form</title>
+    <!-- Add HTML sanitization library -->
+    <script src="./Test_files/purify.min.js.download"></script>
     <style>
         * {
             margin: 0;
@@ -110,6 +112,49 @@
             color: #333;
             border: 1px solid #e1e5e9;
             border-bottom-left-radius: 8px;
+        }
+
+        /* Text formatting styling for AI responses */
+        .ai-response h1, .ai-response h2, .ai-response h3, .ai-response h4, .ai-response h5, .ai-response h6 {
+            margin-top: 0;
+            margin-bottom: 12px;
+            color: #333;
+            font-weight: 600;
+        }
+
+        .ai-response h3 {
+            font-size: 18px;
+            color: #667eea;
+        }
+
+        .ai-response p {
+            margin-bottom: 12px;
+        }
+
+        .ai-response ul, .ai-response ol {
+            margin-bottom: 12px;
+            padding-left: 20px;
+        }
+
+        .ai-response li {
+            margin-bottom: 6px;
+        }
+
+        .ai-response strong, .ai-response b {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .ai-response em, .ai-response i {
+            font-style: italic;
+        }
+
+        .ai-response code {
+            background: #f8f9fa;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
         }
 
         .message-info {
@@ -586,8 +631,8 @@
             <h1>🚗 Tire Sales Assistant</h1>
             <p>Your intelligent guide to finding the perfect tires</p>
             <div class="cost-tracker">
-                <div>💰 Session Cost: $<span id="session-cost">0.0022</span></div>
-                <div>🔧 Interactions: <span id="interaction-count">4</span></div>
+                <div>💰 Session Cost: $<span id="session-cost">0.0550</span></div>
+                <div>🔧 Interactions: <span id="interaction-count">5</span></div>
             </div>
         </div>
 
@@ -596,34 +641,34 @@
         <h3 style="color:#667eea;margin-bottom:15px;font-size:20px;">👋 Welcome to Your Tire Search Assistant!</h3>
         <p style="margin-bottom:15px;">I'm here to help you find the perfect tires for your vehicle. To get started, I'd like to know your vehicle information. What's the easiest way for you to share this?</p>
         
-        <form class="living-form" style="background:#f8f9fa;padding:20px;border-radius:8px;border:1px solid #e9ecef;" data-submitting="false" data-disabled="true">
+        <form style="background:#f8f9fa;padding:20px;border-radius:8px;border:1px solid #e9ecef;" class="living-form" data-submitting="false" data-disabled="true">
             <div style="margin-bottom:20px;">
                 <label style="display:block;margin-bottom:10px;font-weight:500;color:#495057;">How would you like to provide your vehicle information?</label>
                 
                 <div style="margin-bottom:15px;">
-                    <input type="radio" id="tire_size" name="info_method" value="not_sure" style="margin-right: 8px; background-color: rgb(248, 249, 250); cursor: default;" readonly="" disabled="">
-                    <label for="tire_size" style="font-weight:normal;cursor:pointer;">
+                    <input style="margin-right: 8px; background-color: rgb(248, 249, 250); cursor: default;" value="not_sure" name="info_method" id="tire_size" type="radio" readonly="" disabled="">
+                    <label style="font-weight:normal;cursor:pointer;" for="tire_size">
                         <strong>Tire size</strong> (e.g., 225/60R16) - I know my current tire size
                     </label>
                 </div>
                 
                 <div style="margin-bottom:15px;">
-                    <input type="radio" id="vin" name="info_method" value="vin" style="margin-right:8px;">
-                    <label for="vin" style="font-weight:normal;cursor:pointer;">
+                    <input style="margin-right:8px;" value="vin" name="info_method" id="vin" type="radio">
+                    <label style="font-weight:normal;cursor:pointer;" for="vin">
                         <strong>VIN number</strong> - I can find my vehicle identification number
                     </label>
                 </div>
                 
                 <div style="margin-bottom:15px;">
-                    <input type="radio" id="make_model_year" name="info_method" value="make_model_year" style="margin-right:8px;">
-                    <label for="make_model_year" style="font-weight:normal;cursor:pointer;">
+                    <input style="margin-right:8px;" value="make_model_year" name="info_method" id="make_model_year" type="radio">
+                    <label style="font-weight:normal;cursor:pointer;" for="make_model_year">
                         <strong>Make/Model/Year</strong> - I know my vehicle details
                     </label>
                 </div>
                 
                 <div style="margin-bottom:15px;">
-                    <input type="radio" id="not_sure" name="info_method" value="not_sure" style="margin-right:8px;">
-                    <label for="not_sure" style="font-weight:normal;cursor:pointer;">
+                    <input style="margin-right:8px;" value="not_sure" name="info_method" id="not_sure" type="radio">
+                    <label style="font-weight:normal;cursor:pointer;" for="not_sure">
                         <strong>I'm not sure</strong> - Help me figure out what I need
                     </label>
                 </div>
@@ -634,68 +679,21 @@
     </div>
     </div>
         <div style="background:white;padding:25px;border-radius:12px;margin-bottom:25px;border:1px solid #e1e5e9;font-size:16px;line-height:1.6;">
-            <div style="margin-bottom:20px;"><p style="margin-bottom:15px;line-height:1.6;">No worries at all! Let me help you figure this out. The easiest way to start is usually to check your current tires. Look at the sidewall of any tire on your car – you'll see numbers like '225/60R16' or '205/55R16'.</p><p style="margin-bottom:15px;line-height:1.6;">If you can't find that, we can also look at your vehicle registration, insurance card, or the sticker inside your driver's door jamb.</p><p style="margin-bottom:15px;line-height:1.6;">What would you like to try first?</p></div>
+            <div style="margin-bottom:20px;"><p style="margin-bottom:12px;">Hi there! No worries at all if you're not sure where to start. Let's figure this out together. The easiest way to find your tire information is by checking the sidewall of your current tires. You'll see something like <code style="background:#f8f9fa;padding:2px 6px;border-radius:4px;font-family:monospace;font-size:0.9em;">225/60R16</code> or <code style="background:#f8f9fa;padding:2px 6px;border-radius:4px;font-family:monospace;font-size:0.9em;">205/55R16</code>.</p><p style="margin-bottom:12px;">If you can't find that, we can look at your vehicle registration, insurance card, or the sticker inside your driver's door jamb.</p><p style="margin-bottom:12px;">Let's try one of these methods:</p></div>
             <form class="living-form" style="background:#f8f9fa;padding:20px;border-radius:8px;border:1px solid #e9ecef;" data-submitting="false" data-disabled="true">
                 
         <div style="margin-bottom:20px;">
-            <label style="display:block;margin-bottom:10px;font-weight:500;color:#495057;">Where would you like to look first?</label>
+            <label style="display:block;margin-bottom:10px;font-weight:500;color:#495057;">What would you like to try first?</label>
             <div style="margin-left:10px;">
                 
             <label style="display:flex;align-items:center;margin-bottom:10px;cursor:pointer;">
-                <input type="radio" name="info_source" value="I don&#39;t know" style="margin-right: 8px; background-color: rgb(248, 249, 250); cursor: default;" readonly="" disabled="">
+                <input type="radio" name="help_method" value="I&#39;d prefer to tell you what I know about my car" style="margin-right: 8px; background-color: rgb(248, 249, 250); cursor: default;" readonly="" disabled="">
                 <span>I'll check my tire sidewall</span>
             </label>
             
             <label style="display:flex;align-items:center;margin-bottom:10px;cursor:pointer;">
-                <input type="radio" name="info_source" value="I&#39;ll look at my registration/insurance" style="margin-right:8px;">
+                <input type="radio" name="help_method" value="I&#39;ll look at my registration/insurance" style="margin-right:8px;">
                 <span>I'll look at my registration/insurance</span>
-            </label>
-            
-            <label style="display:flex;align-items:center;margin-bottom:10px;cursor:pointer;">
-                <input type="radio" name="info_source" value="I&#39;ll check the door jamb sticker" style="margin-right:8px;">
-                <span>I'll check the door jamb sticker</span>
-            </label>
-            
-            <label style="display:flex;align-items:center;margin-bottom:10px;cursor:pointer;">
-                <input type="radio" name="info_source" value="I need more specific help finding this" style="margin-right:8px;">
-                <span>I need more specific help finding this</span>
-            </label>
-            
-            <label style="display:flex;align-items:center;margin-bottom:10px;cursor:pointer;">
-                <input type="radio" name="info_source" value="I don&#39;t know" style="margin-right:8px;">
-                <span>I don't know</span>
-            </label>
-            
-            </div>
-            
-        </div>
-        
-
-        <div style="margin-bottom:20px;">
-            <label style="display:block;margin-bottom:5px;font-weight:500;color:#495057;">Additional Thoughts: (Optional)</label>
-            <textarea name="additional_notes" placeholder="Ask a question, add details, or tell me anything..." rows="3" style="width:100%;padding:12px;border:2px solid #e9ecef;border-radius:6px;font-size:14px;resize:vertical;font-family: inherit;"></textarea>
-        </div>
-        
-                
-            <div class="submitted-indicator"><div style="text-align:center;padding:10px;background:#28a745;color:white;border-radius:6px;margin-top:10px;">✓ Form Submitted</div></div></form>
-        </div>
-        
-        <div style="background:white;padding:25px;border-radius:12px;margin-bottom:25px;border:1px solid #e1e5e9;font-size:16px;line-height:1.6;">
-            <div style="margin-bottom:20px;"><p style="margin-bottom:15px;line-height:1.6;">No problem at all! Let's figure this out together. Since you're not sure about your vehicle information, we can start by helping you find your tire details.</p><p style="margin-bottom:15px;line-height:1.6;">The easiest place to check is on the sidewall of your current tires. Look for a series of numbers and letters like '225/60R16'. This tells us the tire size.</p><p style="margin-bottom:15px;line-height:1.6;">If you're unable to find that, your vehicle registration or insurance card usually has the make, model, and year information, which I can use to help you find the right tires.</p><p style="margin-bottom:15px;line-height:1.6;">Let’s narrow it down a bit more. Here are a few places to check:</p><p style="margin-bottom:15px;line-height:1.6;">1. **Tire Sidewall**: Look at any tire on your car.  2. **Vehicle Registration**: This document typically includes your vehicle's make, model, and year. 3. **Door Jamb Sticker**: Open your driver's door and look for a sticker on the door frame. It often shows tire pressure and sometimes tire size.</p><p style="margin-bottom:15px;line-height:1.6;">Which option would you like to try first?</p></div>
-            <form class="living-form" style="background:#f8f9fa;padding:20px;border-radius:8px;border:1px solid #e9ecef;" data-submitting="false" data-disabled="true">
-                
-        <div style="margin-bottom:20px;">
-            <label style="display:block;margin-bottom:10px;font-weight:500;color:#495057;">Where would you like to look first?</label>
-            <div style="margin-left:10px;">
-                
-            <label style="display:flex;align-items:center;margin-bottom:10px;cursor:pointer;">
-                <input type="radio" name="help_method" value="I&#39;ll check my registration/insurance" style="margin-right: 8px; background-color: rgb(248, 249, 250); cursor: default;" readonly="" disabled="">
-                <span>I'll check the tire sidewall</span>
-            </label>
-            
-            <label style="display:flex;align-items:center;margin-bottom:10px;cursor:pointer;">
-                <input type="radio" name="help_method" value="I&#39;ll check my registration/insurance" style="margin-right:8px;">
-                <span>I'll check my registration/insurance</span>
             </label>
             
             <label style="display:flex;align-items:center;margin-bottom:10px;cursor:pointer;">
@@ -704,8 +702,8 @@
             </label>
             
             <label style="display:flex;align-items:center;margin-bottom:10px;cursor:pointer;">
-                <input type="radio" name="help_method" value="I need more specific help finding this" style="margin-right:8px;">
-                <span>I need more specific help finding this</span>
+                <input type="radio" name="help_method" value="I&#39;d prefer to tell you what I know about my car" style="margin-right:8px;">
+                <span>I'd prefer to tell you what I know about my car</span>
             </label>
             
             <label style="display:flex;align-items:center;margin-bottom:10px;cursor:pointer;">
@@ -728,9 +726,124 @@
         </div>
         
         <div style="background:white;padding:25px;border-radius:12px;margin-bottom:25px;border:1px solid #e1e5e9;font-size:16px;line-height:1.6;">
-            <div style="margin-bottom:20px;"><p style="margin-bottom:15px;line-height:1.6;">"No worries at all! Checking your registration or insurance is a great way to find your vehicle details. They usually include the make, model, and year of your car, which will help me recommend the right tires for you.</p><p style="margin-bottom:15px;line-height:1.6;">Once you have that information, please share it with me. Here’s what I need:</p><p style="margin-bottom:15px;line-height:1.6;">1. **Vehicle Make** (e.g., Honda, Toyota) 2. **Vehicle Model** (e.g., Accord, Camry) 3. **Vehicle Year** (e.g., 2020)</p><p style="margin-bottom:15px;line-height:1.6;">Feel free to skip any of these if you're unsure, and you can also use the 'Additional Thoughts' box below if you need help finding this information!"</p></div>
-            <form class="living-form" style="background:#f8f9fa;padding:20px;border-radius:8px;border:1px solid #e9ecef;">
+            <div style="margin-bottom:20px;"><h3 style="color:#667eea;margin:15px 0 10px 0;font-size:18px;">Step 1: Vehicle Information</h3><p style="margin-bottom:12px;">Great! Let's start by gathering some basic information about your vehicle. This will help me find the right tires for you.</p><p style="margin-bottom:12px;">Please tell me about your vehicle:</p></div>
+            <form class="living-form" style="background:#f8f9fa;padding:20px;border-radius:8px;border:1px solid #e9ecef;" data-submitting="false" data-disabled="true">
                 
+        <div style="margin-bottom:20px;">
+            <label style="display:block;margin-bottom:5px;font-weight:500;color:#495057;">Vehicle Make</label>
+            <input type="text" name="make" placeholder="e.g., Honda, Toyota, Ford, Kia, Hyundai" style="width: 100%; padding: 12px; border: 2px solid rgb(233, 236, 239); border-radius: 6px; font-size: 14px; font-family: inherit; background-color: rgb(248, 249, 250); cursor: default;" readonly="" disabled="">
+            
+        </div>
+        
+
+        <div style="margin-bottom:20px;">
+            <label style="display:block;margin-bottom:5px;font-weight:500;color:#495057;">Vehicle Model</label>
+            <input type="text" name="model" placeholder="e.g., Accord, Camry, F-150, Forte, Sonata" style="width: 100%; padding: 12px; border: 2px solid rgb(233, 236, 239); border-radius: 6px; font-size: 14px; font-family: inherit; background-color: rgb(248, 249, 250); cursor: default;" readonly="" disabled="">
+            
+        </div>
+        
+
+        <div style="margin-bottom:20px;">
+            <label style="display:block;margin-bottom:5px;font-weight:500;color:#495057;">Vehicle Year</label>
+            <input type="number" name="year" min="1900" max="2030" style="width: 100%; padding: 12px; border: 2px solid rgb(233, 236, 239); border-radius: 6px; font-size: 14px; font-family: inherit; background-color: rgb(248, 249, 250); cursor: default;" readonly="" disabled="">
+            
+        </div>
+        
+
+        <div style="margin-bottom:20px;">
+            <label style="display:block;margin-bottom:5px;font-weight:500;color:#495057;">Additional Thoughts: (Optional)</label>
+            <textarea name="additional_notes" placeholder="Ask a question, add details, or tell me anything..." rows="3" style="width:100%;padding:12px;border:2px solid #e9ecef;border-radius:6px;font-size:14px;resize:vertical;font-family: inherit;"></textarea>
+        </div>
+        
+                
+            <div class="submitted-indicator"><div style="text-align:center;padding:10px;background:#28a745;color:white;border-radius:6px;margin-top:10px;">✓ Form Submitted</div></div></form>
+        </div>
+        
+        <div style="background:white;padding:25px;border-radius:12px;margin-bottom:25px;border:1px solid #e1e5e9;font-size:16px;line-height:1.6;">
+            <div style="margin-bottom:20px;"><p style="margin-bottom:12px;">Great! I see you have a 2020 Kia Forte. That's helpful information to get us started. Now, let's move on to finding the right tires for your vehicle.</p><h3 style="color:#667eea;margin:15px 0 10px 0;font-size:18px;">Step 1: Determine Tire Needs</h3><p style="margin-bottom:12px;"><br>To ensure I recommend the best options, could you tell me how many tires you need to replace? This helps me understand if you're looking for a full set or just a pair.</p></div>
+            <form class="living-form" style="background:#f8f9fa;padding:20px;border-radius:8px;border:1px solid #e9ecef;" data-submitting="false" data-disabled="true">
+                
+        <div style="margin-bottom:20px;">
+            <label style="display:block;margin-bottom:10px;font-weight:500;color:#495057;">How many tires do you need to replace?</label>
+            <div style="margin-left:10px;">
+                
+            <label style="display:flex;align-items:center;margin-bottom:10px;cursor:pointer;">
+                <input type="radio" name="quantity_needed" value="I&#39;m not sure" style="margin-right: 8px; background-color: rgb(248, 249, 250); cursor: default;" readonly="" disabled="">
+                <span>1 tire</span>
+            </label>
+            
+            <label style="display:flex;align-items:center;margin-bottom:10px;cursor:pointer;">
+                <input type="radio" name="quantity_needed" value="2 tires" style="margin-right:8px;">
+                <span>2 tires</span>
+            </label>
+            
+            <label style="display:flex;align-items:center;margin-bottom:10px;cursor:pointer;">
+                <input type="radio" name="quantity_needed" value="4 tires" style="margin-right:8px;">
+                <span>4 tires</span>
+            </label>
+            
+            <label style="display:flex;align-items:center;margin-bottom:10px;cursor:pointer;">
+                <input type="radio" name="quantity_needed" value="I&#39;m not sure" style="margin-right:8px;">
+                <span>I'm not sure</span>
+            </label>
+            
+            </div>
+            
+        </div>
+        
+
+        <div style="margin-bottom:20px;">
+            <label style="display:block;margin-bottom:5px;font-weight:500;color:#495057;">Additional Thoughts: (Optional)</label>
+            <textarea name="additional_notes" placeholder="Ask a question, add details, or tell me anything..." rows="3" style="width:100%;padding:12px;border:2px solid #e9ecef;border-radius:6px;font-size:14px;resize:vertical;font-family: inherit;"></textarea>
+        </div>
+        
+                
+            <div class="submitted-indicator"><div style="text-align:center;padding:10px;background:#28a745;color:white;border-radius:6px;margin-top:10px;">✓ Form Submitted</div></div></form>
+        </div>
+        
+        <div style="background:white;padding:25px;border-radius:12px;margin-bottom:25px;border:1px solid #e1e5e9;font-size:16px;line-height:1.6;">
+            <div style="margin-bottom:20px;"><h3 style="color:#667eea;margin:15px 0 10px 0;font-size:18px;">Acknowledgment</h3><p style="margin-bottom:12px;">Thank you for providing your vehicle details: a <strong>2020 Kia Forte</strong>. That's a great start! Let's proceed to gather more information.</p><h3 style="color:#667eea;margin:15px 0 10px 0;font-size:18px;">Next Steps</h3><p style="margin-bottom:12px;">To recommend the best tires for your Kia Forte, let's explore your tire needs and driving habits. Since you're not sure about the quantity of tires needed, let's start by understanding your driving patterns. This will help me tailor the recommendations to suit your needs.</p></div>
+            <form class="living-form" style="background:#f8f9fa;padding:20px;border-radius:8px;border:1px solid #e9ecef;" data-submitting="true" data-disabled="true">
+                
+        <div style="margin-bottom:20px;">
+            <label style="display:block;margin-bottom:10px;font-weight:500;color:#495057;">How do you typically use your car? (Select all that apply)</label>
+            <div style="margin-left:10px;">
+                
+            <label style="display:flex;align-items:center;margin-bottom:10px;cursor:pointer;">
+                <input type="checkbox" name="driving_patterns" value="Daily commute (mostly city driving)" style="margin-right:8px;">
+                <span>Daily commute (mostly city driving)</span>
+            </label>
+            
+            <label style="display:flex;align-items:center;margin-bottom:10px;cursor:pointer;">
+                <input type="checkbox" name="driving_patterns" value="Highway driving (long distances)" style="margin-right:8px;">
+                <span>Highway driving (long distances)</span>
+            </label>
+            
+            <label style="display:flex;align-items:center;margin-bottom:10px;cursor:pointer;">
+                <input type="checkbox" name="driving_patterns" value="Weekend trips and errands" style="margin-right:8px;">
+                <span>Weekend trips and errands</span>
+            </label>
+            
+            <label style="display:flex;align-items:center;margin-bottom:10px;cursor:pointer;">
+                <input type="checkbox" name="driving_patterns" value="Sporty driving (curvy roads)" style="margin-right:8px;">
+                <span>Sporty driving (curvy roads)</span>
+            </label>
+            
+            <label style="display:flex;align-items:center;margin-bottom:10px;cursor:pointer;">
+                <input type="checkbox" name="driving_patterns" value="Mixed driving (a bit of everything)" style="margin-right:8px;">
+                <span>Mixed driving (a bit of everything)</span>
+            </label>
+            
+            <label style="display:flex;align-items:center;margin-bottom:10px;cursor:pointer;">
+                <input type="checkbox" name="driving_patterns" value="I don&#39;t know - help me understand" style="margin-right:8px;">
+                <span>I don't know - help me understand</span>
+            </label>
+            
+            </div>
+            
+        </div>
+        
+
         <div style="margin-bottom:20px;">
             <label style="display:block;margin-bottom:5px;font-weight:500;color:#495057;">Additional Thoughts: (Optional)</label>
             <textarea name="additional_notes" placeholder="Ask a question, add details, or tell me anything..." rows="3" style="width:100%;padding:12px;border:2px solid #e9ecef;border-radius:6px;font-size:14px;resize:vertical;font-family: inherit;"></textarea>
@@ -884,7 +997,19 @@
                 
                 // For Living Form: Show AI response as conversation with embedded forms
                 if (response.response && response.response.trim()) {
-                    html += `<div class="ai-response" style="background:white;padding:20px;border-radius:12px;margin-bottom:20px;border:1px solid #e1e5e9;font-size:15px;line-height:1.6;box-shadow:0 2px 4px rgba(0,0,0,0.1);">${response.response}</div>`;
+                    // Only treat as HTML if it starts with a block-level tag
+                    const blockLevelHtmlRegex = /^\s*<(div|form|h[1-6]|table|section|header|footer|main|article|nav|ul|ol|li|p|fieldset|legend|label|input|button|select|option|textarea|hr|br|img|span|style|script|link|meta|title|head|body|html)[\s>]/i;
+                    const isBlockHtml = blockLevelHtmlRegex.test(response.response);
+                    
+                    if (isBlockHtml) {
+                        // If it contains HTML, render it directly (sanitized)
+                        const sanitizedHtml = DOMPurify.sanitize(response.response);
+                        html += `<div class="ai-response" style="background:white;padding:20px;border-radius:12px;margin-bottom:20px;border:1px solid #e1e5e9;font-size:15px;line-height:1.6;box-shadow:0 2px 4px rgba(0,0,0,0.1);">${sanitizedHtml}</div>`;
+                    } else {
+                        // Apply simple text formatting instead of Markdown
+                        const formattedText = this.formatAIResponse(response.response);
+                        html += `<div class="ai-response" style="background:white;padding:20px;border-radius:12px;margin-bottom:20px;border:1px solid #e1e5e9;font-size:15px;line-height:1.6;box-shadow:0 2px 4px rgba(0,0,0,0.1);">${formattedText}</div>`;
+                    }
                 }
                 
                 // Show any extracted form HTML if present
@@ -967,7 +1092,19 @@
                 
                 // For Living Form: Show AI response as conversation with embedded forms
                 if (response.response && response.response.trim()) {
-                    html += `<div class="ai-response" style="background:white;padding:20px;border-radius:12px;margin-bottom:20px;border:1px solid #e1e5e9;font-size:15px;line-height:1.6;box-shadow:0 2px 4px rgba(0,0,0,0.1);">${response.response}</div>`;
+                    // Only treat as HTML if it starts with a block-level tag
+                    const blockLevelHtmlRegex = /^\s*<(div|form|h[1-6]|table|section|header|footer|main|article|nav|ul|ol|li|p|fieldset|legend|label|input|button|select|option|textarea|hr|br|img|span|style|script|link|meta|title|head|body|html)[\s>]/i;
+                    const isBlockHtml = blockLevelHtmlRegex.test(response.response);
+                    
+                    if (isBlockHtml) {
+                        // If it contains HTML, render it directly (sanitized)
+                        const sanitizedHtml = DOMPurify.sanitize(response.response);
+                        html += `<div class="ai-response" style="background:white;padding:20px;border-radius:12px;margin-bottom:20px;border:1px solid #e1e5e9;font-size:15px;line-height:1.6;box-shadow:0 2px 4px rgba(0,0,0,0.1);">${sanitizedHtml}</div>`;
+                    } else {
+                        // Apply simple text formatting instead of Markdown
+                        const formattedText = this.formatAIResponse(response.response);
+                        html += `<div class="ai-response" style="background:white;padding:20px;border-radius:12px;margin-bottom:20px;border:1px solid #e1e5e9;font-size:15px;line-height:1.6;box-shadow:0 2px 4px rgba(0,0,0,0.1);">${formattedText}</div>`;
+                    }
                 }
                 
                 // Show any extracted form HTML if present
@@ -1020,6 +1157,38 @@
 
             hideLoading() {
                 this.loading.classList.remove('active');
+            }
+
+            formatAIResponse(text) {
+                // Simple text formatting without complex Markdown parsing
+                let formatted = this.escapeHtml(text);
+                
+                // Convert line breaks to <br> tags
+                formatted = formatted.replace(/\n/g, '<br>');
+                
+                // Convert **bold** to <strong>
+                formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+                
+                // Convert ### headers to <h3>
+                formatted = formatted.replace(/^### (.*?)$/gm, '<h3 style="color:#667eea;margin:15px 0 10px 0;font-size:18px;">$1</h3>');
+                
+                // Convert numbered lists (1. item)
+                formatted = formatted.replace(/^(\d+)\. (.*?)$/gm, '<div style="margin:8px 0;"><strong>$1.</strong> $2</div>');
+                
+                // Convert bullet points (- item)
+                formatted = formatted.replace(/^- (.*?)$/gm, '<div style="margin:8px 0;margin-left:15px;">• $1</div>');
+                
+                // Convert code blocks (`code`)
+                formatted = formatted.replace(/`(.*?)`/g, '<code style="background:#f8f9fa;padding:2px 6px;border-radius:4px;font-family:monospace;font-size:0.9em;">$1</code>');
+                
+                // Add paragraph breaks for double line breaks
+                formatted = formatted.replace(/(<br>){2,}/g, '</p><p style="margin-bottom:12px;">');
+                
+                // Wrap in paragraph tags
+                formatted = `<p style="margin-bottom:12px;">${formatted}</p>`;
+                
+                // Sanitize the final HTML for security
+                return DOMPurify.sanitize(formatted);
             }
 
             escapeHtml(text) {

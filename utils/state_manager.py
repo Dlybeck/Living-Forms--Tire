@@ -4,6 +4,9 @@ from datetime import datetime
 from enum import Enum
 import json
 import uuid
+import logging
+
+logger = logging.getLogger(__name__)
 
 class ConversationStep(Enum):
     """Enum for conversation steps in the living form"""
@@ -71,6 +74,14 @@ class ConversationState:
     # Form data from embedded forms
     form_data: Dict[str, Any] = field(default_factory=dict)
     
+    # Natural conversation flow tracking
+    needs_help_with_vehicle_info: bool = False
+    conversation_context: Dict[str, Any] = field(default_factory=dict)
+    user_situation: Dict[str, Any] = field(default_factory=dict)
+    attempted_approaches: List[str] = field(default_factory=list)
+    user_chosen_path: Optional[str] = None
+    last_specific_response: Optional[str] = None
+    
     # Form submission tracking - track completion by category
     completed_categories: List[DataCategory] = field(default_factory=list)
     completed_forms: List[str] = field(default_factory=list)
@@ -111,11 +122,15 @@ class ConversationState:
     
     def update_form_data(self, new_form_data: Dict[str, Any]):
         """Update form data from user input and categorize it"""
+        # Store ALL form data, not just vehicle/tire fields
         self.form_data.update(new_form_data)
         self.last_updated = datetime.now()
         
         # Parse form data into structured categories
         self._categorize_form_data(new_form_data)
+        
+        # Log the form data for debugging
+        logger.info(f"Updated form data: {self.form_data}")
     
     def _categorize_form_data(self, form_data: Dict[str, Any]):
         """Categorize form data into structured collection categories"""
@@ -304,6 +319,250 @@ class ConversationState:
         
         return self.user_knowledge_level
     
+    def note_user_needs_help(self, reason: str = "not_sure"):
+        """Note that user needs help with vehicle information"""
+        self.needs_help_with_vehicle_info = True
+        self.user_situation["needs_help_reason"] = reason
+        self.user_situation["help_started_at"] = datetime.now().isoformat()
+        self.user_knowledge_level = UserKnowledgeLevel.NOVICE
+        self.last_updated = datetime.now()
+        logger.info(f"User needs help with vehicle info: {reason}")
+    
+    def update_user_situation(self, **kwargs):
+        """Update what we know about the user's current situation"""
+        for key, value in kwargs.items():
+            self.user_situation[key] = value
+        self.last_updated = datetime.now()
+        logger.info(f"Updated user situation: {kwargs}")
+    
+    def add_attempted_approach(self, approach: str):
+        """Track what approaches we've tried so we don't repeat them"""
+        if approach not in self.attempted_approaches:
+            self.attempted_approaches.append(approach)
+            logger.info(f"Added attempted approach: {approach}")
+    
+    def track_user_response(self, response: str):
+        """Track the user's specific response and detect actionable paths"""
+        self.last_specific_response = response
+        
+        # Detect if user has chosen a specific path
+        response_lower = response.lower()
+        
+        # Check for specific actionable responses
+        if ("ask a friend" in response_lower or "friend" in response_lower or 
+            "family member" in response_lower or "ask family" in response_lower or
+            "family" in response_lower):
+            self.user_chosen_path = "ask_friend"
+            logger.info("User chose path: ask friend/family member")
+        elif "insurance" in response_lower and ("app" in response_lower or "website" in response_lower or "email" in response_lower or "text" in response_lower):
+            self.user_chosen_path = "insurance_app"
+            logger.info("User chose path: insurance app/records")
+        elif "service record" in response_lower or "oil change" in response_lower or "service" in response_lower:
+            self.user_chosen_path = "service_records"
+            logger.info("User chose path: service records")
+        elif "manufacturer" in response_lower or "dealership" in response_lower or "honda" in response_lower or "toyota" in response_lower:
+            self.user_chosen_path = "manufacturer_app"
+            logger.info("User chose path: manufacturer app")
+        elif "vin" in response_lower:
+            self.user_chosen_path = "vin_lookup"
+            logger.info("User chose path: VIN lookup")
+        elif "photo" in response_lower or "document" in response_lower:
+            self.user_chosen_path = "document_photos"
+            logger.info("User chose path: document photos")
+        
+        self.last_updated = datetime.now()
+    
+    def get_conversational_insights(self) -> Dict[str, Any]:
+        """Get insights about the conversation for natural AI understanding"""
+        insights = {
+            "user_seems_stuck": self.needs_help_with_vehicle_info,
+            "what_weve_tried": self.attempted_approaches,
+            "user_situation_summary": self._get_situation_summary(),
+            "next_logical_approaches": self._get_next_logical_approaches(),
+            "conversation_tone": self._get_conversation_tone(),
+            "user_chosen_path": self.user_chosen_path,
+            "last_specific_response": self.last_specific_response,
+            "should_build_on_response": self._should_build_on_response(),
+            "conversation_progressing_well": self.is_conversation_progressing_well(),
+            "conversation_length": len(self.conversation_history),
+            "has_made_progress": bool(self.vehicle_info.get('make') or self.vehicle_info.get('model'))
+        }
+        return insights
+    
+    def _should_build_on_response(self) -> bool:
+        """Check if we should build on the user's specific response rather than offering more options"""
+        return (
+            self.user_chosen_path is not None and 
+            self.last_specific_response is not None and
+            len(self.last_specific_response.strip()) > 5  # Not just "yes" or "no"
+        )
+    
+    def clear_chosen_path(self):
+        """Clear the chosen path when user has progressed or changed direction"""
+        self.user_chosen_path = None
+        self.last_specific_response = None
+        self.last_updated = datetime.now()
+        logger.info("Cleared chosen path - user has progressed")
+    
+    def is_conversation_progressing_well(self) -> bool:
+        """Check if the conversation is progressing well or if we're stuck"""
+        # If they've made progress on vehicle info, conversation is progressing
+        if self.vehicle_info.get('make') or self.vehicle_info.get('model'):
+            return True
+        
+        # If they've chosen a path and we're building on it, that's progress
+        if self.user_chosen_path and self._should_build_on_response():
+            return True
+        
+        # If we haven't tried many approaches yet, we're still progressing
+        if len(self.attempted_approaches) < 3:
+            return True
+        
+        # If they've been in conversation for a while without progress, we might be stuck
+        if len(self.conversation_history) > 4 and not self.vehicle_info.get('make'):
+            return False
+        
+        return True
+    
+    def _get_situation_summary(self) -> str:
+        """Natural language summary of user's situation"""
+        situation_parts = []
+        
+        # Check what they can/can't do
+        if self.user_situation.get("has_vehicle_access") is False:
+            situation_parts.append("not near their car")
+        elif self.user_situation.get("has_vehicle_access") is True:
+            situation_parts.append("near their car")
+            
+        if self.user_situation.get("has_documents") is False:
+            situation_parts.append("no vehicle documents available")
+        elif self.user_situation.get("has_documents") is True:
+            situation_parts.append("has vehicle documents")
+            
+        if self.user_situation.get("has_internet_access") is True:
+            situation_parts.append("has internet access")
+        
+        # What they've told us about their needs
+        if self.user_situation.get("needs_help_reason") == "not_sure":
+            situation_parts.append("unsure how to provide vehicle info")
+        
+        if not situation_parts:
+            return "just getting started"
+        
+        return ", ".join(situation_parts)
+    
+    def _get_next_logical_approaches(self) -> List[str]:
+        """Suggest what makes sense to try next"""
+        approaches = []
+        
+        # If they're near their car but haven't been asked to check it
+        if (self.user_situation.get("has_vehicle_access") is True and 
+            "check_vehicle_directly" not in self.attempted_approaches):
+            approaches.append("ask them to check their car directly")
+        
+        # If they have documents but haven't been asked to check them
+        if (self.user_situation.get("has_documents") is True and 
+            "check_documents" not in self.attempted_approaches):
+            approaches.append("ask them to check their documents")
+        
+        # If they have internet but we haven't suggested online resources
+        if (self.user_situation.get("has_internet_access") is True and 
+            "online_resources" not in self.attempted_approaches):
+            approaches.append("suggest online resources or apps")
+        
+        # If they're stuck and we haven't offered alternatives
+        if (self.user_situation.get("has_vehicle_access") is False and 
+            self.user_situation.get("has_documents") is False and 
+            "creative_alternatives" not in self.attempted_approaches):
+            approaches.append("suggest creative alternatives")
+        
+        return approaches
+    
+    def _get_conversation_tone(self) -> str:
+        """Determine what tone the conversation should have"""
+        if len(self.attempted_approaches) >= 3:
+            return "patient and creative - they've tried several things"
+        elif self.user_situation.get("needs_help_reason") == "not_sure":
+            return "supportive and exploratory - they're unsure"
+        elif len(self.conversation_history) <= 2:
+            return "friendly and helpful - just getting started"
+        else:
+            return "encouraging and solution-focused"
+    
+    def get_suggested_form_approach(self) -> Dict[str, Any]:
+        """Suggest what kind of form makes sense based on conversation context"""
+        suggestions = {
+            "form_type": "exploratory",
+            "suggested_questions": [],
+            "tone": self._get_conversation_tone(),
+            "context_reminder": ""
+        }
+        
+        # If user has chosen a specific path, help them with that path
+        if self.user_chosen_path and self._should_build_on_response():
+            suggestions["form_type"] = "path_assistance"
+            suggestions["context_reminder"] = f"User chose: {self.user_chosen_path} - help them with this specific method"
+            
+            if self.user_chosen_path == "ask_friend":
+                suggestions["suggested_questions"] = ["what to ask friend/family member", "how to get info from them"]
+            elif self.user_chosen_path == "insurance_app":
+                suggestions["suggested_questions"] = ["insurance app guidance", "where to find vehicle info"]
+            elif self.user_chosen_path == "service_records":
+                suggestions["suggested_questions"] = ["service record guidance", "what to look for"]
+            elif self.user_chosen_path == "manufacturer_app":
+                suggestions["suggested_questions"] = ["manufacturer app guidance", "app recommendations"]
+            elif self.user_chosen_path == "vin_lookup":
+                suggestions["suggested_questions"] = ["VIN lookup guidance", "where to find VIN"]
+            elif self.user_chosen_path == "document_photos":
+                suggestions["suggested_questions"] = ["document photo guidance", "what to look for in photos"]
+            else:
+                suggestions["suggested_questions"] = ["specific path guidance"]
+        
+        # If we have vehicle info, move to preferences
+        elif self.vehicle_info.get('make') and self.vehicle_info.get('model'):
+            suggestions["form_type"] = "preferences_gathering"
+            suggestions["suggested_questions"] = ["driving patterns", "budget", "special needs"]
+            suggestions["context_reminder"] = f"They have a {self.vehicle_info.get('year', '')} {self.vehicle_info.get('make', '')} {self.vehicle_info.get('model', '')}"
+        
+        # If they need help with vehicle info
+        elif self.needs_help_with_vehicle_info:
+            next_approaches = self._get_next_logical_approaches()
+            if next_approaches:
+                suggestions["form_type"] = "situational_help"
+                suggestions["suggested_questions"] = next_approaches
+                suggestions["context_reminder"] = f"They need help: {self.user_situation.get('needs_help_reason', 'unknown')}"
+            else:
+                suggestions["form_type"] = "creative_alternatives"
+                suggestions["suggested_questions"] = ["alternative methods", "creative solutions"]
+                suggestions["context_reminder"] = "They're stuck - need creative alternatives"
+        
+        # If they're just starting
+        elif len(self.conversation_history) <= 1:
+            suggestions["form_type"] = "initial_approach"
+            suggestions["suggested_questions"] = ["how to provide vehicle info"]
+            suggestions["context_reminder"] = "Just getting started"
+        
+        # If they're progressing normally
+        else:
+            missing_info = []
+            if not self.vehicle_info.get('make'):
+                missing_info.append("vehicle info")
+            if not self.tire_specs.get('quantity_needed'):
+                missing_info.append("tire quantity")
+            if not self.budget_preferences:
+                missing_info.append("budget")
+            
+            if missing_info:
+                suggestions["form_type"] = "information_gathering"
+                suggestions["suggested_questions"] = missing_info
+                suggestions["context_reminder"] = f"Still need: {', '.join(missing_info)}"
+            else:
+                suggestions["form_type"] = "recommendation_ready"
+                suggestions["suggested_questions"] = ["final preferences", "recommendation request"]
+                suggestions["context_reminder"] = "Ready for recommendations"
+        
+        return suggestions
+    
     def get_conversation_context(self) -> Dict[str, Any]:
         """Get formatted conversation context for AI"""
         return {
@@ -320,7 +579,13 @@ class ConversationState:
             "ready_for_recommendations": self.is_ready_for_recommendations(),
             "conversation_length": len(self.conversation_history),
             "total_cost": self.total_cost,
-            "researched_info": self.researched_info
+            "researched_info": self.researched_info,
+            "form_data": self.form_data,
+            "needs_help_with_vehicle_info": self.needs_help_with_vehicle_info,
+            "user_situation": self.user_situation,
+            "attempted_approaches": self.attempted_approaches,
+            "conversational_insights": self.get_conversational_insights(),
+            "suggested_form_approach": self.get_suggested_form_approach()
         }
     
     def to_dict(self) -> Dict[str, Any]:
@@ -335,6 +600,11 @@ class ConversationState:
             "budget_preferences": self.budget_preferences,
             "current_tire_status": self.current_tire_status,
             "special_considerations": self.special_considerations,
+            "needs_help_with_vehicle_info": self.needs_help_with_vehicle_info,
+            "user_situation": self.user_situation,
+            "attempted_approaches": self.attempted_approaches,
+            "user_chosen_path": self.user_chosen_path,
+            "last_specific_response": self.last_specific_response,
             "total_cost": self.total_cost,
             "cost_breakdown": self.cost_breakdown,
             "created_at": self.created_at.isoformat(),
@@ -363,6 +633,11 @@ class ConversationState:
         state.budget_preferences = data["budget_preferences"]
         state.current_tire_status = data["current_tire_status"]
         state.special_considerations = data["special_considerations"]
+        state.needs_help_with_vehicle_info = data.get("needs_help_with_vehicle_info", False)
+        state.user_situation = data.get("user_situation", {})
+        state.attempted_approaches = data.get("attempted_approaches", [])
+        state.user_chosen_path = data.get("user_chosen_path", None)
+        state.last_specific_response = data.get("last_specific_response", None)
         state.total_cost = data["total_cost"]
         state.cost_breakdown = data["cost_breakdown"]
         state.created_at = datetime.fromisoformat(data["created_at"])

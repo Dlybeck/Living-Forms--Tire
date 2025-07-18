@@ -115,6 +115,16 @@ class TireDatabase:
                     "oem_brands": ["Falken", "Bridgestone", "Michelin"],
                     "wheel_bolt_pattern": "5x114.3",
                     "special_requirements": ["AWD capability", "Light off-road use"]
+                },
+                "kia_forte_2019_2023": {
+                    "make": "Kia",
+                    "model": "Forte",
+                    "year_range": "2019-2023",
+                    "oem_tire_sizes": ["205/55R16", "225/45R17"],
+                    "alternative_sizes": ["215/60R16", "205/60R16"],
+                    "oem_brands": ["Nexen", "Kumho", "Hankook"],
+                    "wheel_bolt_pattern": "5x114.3",
+                    "special_requirements": ["Fuel efficiency focus", "Compact car sizing"]
                 }
             },
             "tires": {
