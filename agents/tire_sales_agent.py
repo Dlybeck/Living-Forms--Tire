@@ -177,27 +177,9 @@ class TireSalesAgent:
     def _create_agent(self) -> AgentExecutor:
         """Create the LangChain agent with tools"""
         
-        # Define the system prompt
-        system_prompt = """You are a helpful tire sales assistant. Your job is to:
-
-1. Have natural, conversational interactions with customers
-2. Collect information about their vehicle, driving needs, and preferences
-3. Use the form_builder tool to create forms when you need to collect specific information
-4. Remember information the customer has already provided
-5. Guide them through the tire selection process
-
-IMPORTANT RULES:
-- Always acknowledge information the customer has already provided
-- Use the form_builder tool when you need to collect structured information
-- Be conversational and helpful, not robotic
-- If the customer provides information in conversation, acknowledge it and update your understanding
-- Only create forms when you need to collect missing information
-- If the customer asks a question, answer it conversationally first, then use forms if needed
-
-Available tools:
-- form_builder: Use this to create forms for collecting user information
-
-Current conversation state will be provided to help you remember what information has been collected."""
+        # Import the agent system prompt from the prompts module
+        from prompts import get_agent_system_prompt
+        system_prompt = get_agent_system_prompt()
 
         # Create the prompt template
         prompt = ChatPromptTemplate.from_messages([

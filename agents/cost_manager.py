@@ -96,11 +96,22 @@ class CostManagerInterface(ABC):
         pass
     
     def track_cost(self, operation_type: str, actual_cost: float, conversation_state):
-        """Track actual cost of operation"""
-        conversation_state.total_cost += actual_cost
-        conversation_state.cost_breakdown[operation_type] = conversation_state.cost_breakdown.get(operation_type, 0) + actual_cost
-        
-        logger.info(f"Cost tracked: {operation_type} = ${actual_cost:.4f}, Total: ${conversation_state.total_cost:.4f}")
+        """Track actual cost of operation (compatible with ConversationRoadmap)"""
+        # Use shared_data for cost tracking
+        if hasattr(conversation_state, 'shared_data'):
+            shared_data = conversation_state.shared_data
+            shared_data['total_cost'] = shared_data.get('total_cost', 0.0) + actual_cost
+            if 'cost_breakdown' not in shared_data:
+                shared_data['cost_breakdown'] = {}
+            shared_data['cost_breakdown'][operation_type] = shared_data['cost_breakdown'].get(operation_type, 0.0) + actual_cost
+            logger.info(f"Cost tracked: {operation_type} = ${actual_cost:.4f}, Total: ${shared_data['total_cost']:.4f}")
+        else:
+            # Fallback for legacy ConversationState
+            conversation_state.total_cost = getattr(conversation_state, 'total_cost', 0.0) + actual_cost
+            if not hasattr(conversation_state, 'cost_breakdown'):
+                conversation_state.cost_breakdown = {}
+            conversation_state.cost_breakdown[operation_type] = conversation_state.cost_breakdown.get(operation_type, 0.0) + actual_cost
+            logger.info(f"Cost tracked: {operation_type} = ${actual_cost:.4f}, Total: ${conversation_state.total_cost:.4f}")
     
     def estimate_cost(self, prompt: str, model_type: ModelType, expected_output_length: int = 200) -> float:
         """Estimate cost for a prompt"""
@@ -114,18 +125,31 @@ class CostManagerInterface(ABC):
         return estimated_cost
     
     def get_remaining_budget(self, conversation_state) -> float:
-        """Get remaining budget for this conversation"""
-        return max(0, self.conversation_budget - conversation_state.total_cost)
+        """Get remaining budget for this conversation (compatible with ConversationRoadmap)"""
+        if hasattr(conversation_state, 'shared_data'):
+            total_cost = conversation_state.shared_data.get('total_cost', 0.0)
+        else:
+            total_cost = getattr(conversation_state, 'total_cost', 0.0)
+        return max(0, self.conversation_budget - total_cost)
     
     def get_cost_summary(self, conversation_state) -> Dict[str, Any]:
-        """Get comprehensive cost summary"""
+        """Get comprehensive cost summary (compatible with ConversationRoadmap)"""
+        if hasattr(conversation_state, 'shared_data'):
+            shared_data = conversation_state.shared_data
+            total_cost = shared_data.get('total_cost', 0.0)
+            cost_breakdown = shared_data.get('cost_breakdown', {})
+            conversation_history = getattr(conversation_state, 'conversation_history', [])
+        else:
+            total_cost = getattr(conversation_state, 'total_cost', 0.0)
+            cost_breakdown = getattr(conversation_state, 'cost_breakdown', {})
+            conversation_history = getattr(conversation_state, 'conversation_history', [])
         return {
-            "total_cost": conversation_state.total_cost,
+            "total_cost": total_cost,
             "budget_remaining": self.get_remaining_budget(conversation_state),
-            "budget_used_percentage": (conversation_state.total_cost / self.conversation_budget) * 100,
-            "cost_breakdown": conversation_state.cost_breakdown,
-            "interactions_count": len(conversation_state.conversation_history),
-            "average_cost_per_interaction": conversation_state.total_cost / max(1, len(conversation_state.conversation_history))
+            "budget_used_percentage": (total_cost / self.conversation_budget) * 100 if self.conversation_budget else 0.0,
+            "cost_breakdown": cost_breakdown,
+            "interactions_count": len(conversation_history),
+            "average_cost_per_interaction": total_cost / max(1, len(conversation_history))
         }
 
 class GenerousCostManager(CostManagerInterface):
@@ -165,44 +189,22 @@ class GenerousCostManager(CostManagerInterface):
         remaining_budget = self.get_remaining_budget(conversation_state)
         needs_web_search = self._needs_web_search(query_complexity, conversation_state)
         
-        # Prioritize web search models (GPT-4o and GPT-4o-mini) when web search is needed
-        if needs_web_search:
-            if query_complexity == "high" and remaining_budget >= 0.05:
-                logger.info("🔍 Using GPT-4o for high complexity query with web search")
-                return ModelType.GPT_4O
-            elif remaining_budget >= 0.02:
-                logger.info("🔍 Using GPT-4o-mini for web search (excellent value)")
-                return ModelType.GPT_4O_MINI
-            else:
-                logger.info("🔍 Using GPT-4o-mini for web search despite tight budget")
-                return ModelType.GPT_4O_MINI  # Still use web search even on tight budget
+        # Use two middle-tier models instead of high/low combination
+        # Primary: GPT-4o-mini (middle tier with web search)
+        # Secondary: GPT-4.1-mini (middle tier for simpler tasks)
         
-        # Regular model selection for non-web-search queries
-        if query_complexity == "high" and remaining_budget >= 0.05:
-            logger.info("Using GPT-4o for high complexity query")
-            return ModelType.GPT_4O
-        elif query_complexity == "medium" and remaining_budget >= 0.03:
-            logger.info("Using GPT-4o for medium complexity query")
-            return ModelType.GPT_4O
-        
-        # Use GPT-4o-mini as fallback for low complexity or when budget is tighter
-        if remaining_budget >= 0.02:  # 2 cents remaining
-            logger.info("Using GPT-4o-mini for low complexity or budget constraints")
+        if needs_web_search or query_complexity in ["medium", "high"]:
+            logger.info("🔍 Using GPT-4o-mini for web search or medium/high complexity (middle-tier)")
             return ModelType.GPT_4O_MINI
         
-        # Use GPT-4.1-mini as balanced option for very tight budget
-        if remaining_budget >= 0.01:
-            logger.info("Using GPT-4.1-mini for tight budget")
+        # Use GPT-4.1-mini for low complexity tasks (still middle-tier)
+        if query_complexity == "low" and remaining_budget >= 0.01:
+            logger.info("Using GPT-4.1-mini for low complexity (middle-tier)")
             return ModelType.GPT_4_1_MINI
         
-        # Use GPT-4.1-nano for ultra-cheap when budget is very tight
-        if remaining_budget < 0.01:  # Less than 1 cent
-            logger.info("Using GPT-4.1-nano for very tight budget")
-            return ModelType.GPT_4_1_NANO
-        
-        # Emergency fallback to cheapest option
-        logger.info("Emergency fallback to GPT-4.1-nano")
-        return ModelType.GPT_4_1_NANO
+        # Fallback to GPT-4o-mini as default (still middle-tier)
+        logger.info("Using GPT-4o-mini as default middle-tier fallback")
+        return ModelType.GPT_4O_MINI
     
     def _needs_web_search(self, query_complexity: str, conversation_state) -> bool:
         """Determine when to search for tire size information"""
@@ -276,18 +278,14 @@ class OptimizedCostManager(CostManagerInterface):
         return True
     
     def get_recommended_model(self, query_complexity: str, conversation_state) -> ModelType:
-        """Cost-optimized model selection - prioritize cost-effective GPT models"""
+        """Use two middle-tier models for optimized cost management"""
         remaining_budget = self.get_remaining_budget(conversation_state)
         
-        # Use GPT-4o-mini as primary choice (excellent value)
-        if remaining_budget >= 0.03:
+        # Use GPT-4o-mini as primary middle-tier choice
+        if remaining_budget >= 0.02:
             return ModelType.GPT_4O_MINI
         
-        # Use GPT-4.1-nano for ultra-cheap when budget is tight
-        if remaining_budget < 0.01:
-            return ModelType.GPT_4_1_NANO
-        
-        # Use GPT-4.1-mini as balanced option
+        # Use GPT-4.1-mini as secondary middle-tier choice
         return ModelType.GPT_4_1_MINI
     
     def should_use_fallback(self, conversation_state) -> bool:
@@ -313,18 +311,14 @@ class AggressiveCostManager(CostManagerInterface):
         return estimated_cost <= remaining_budget
     
     def get_recommended_model(self, query_complexity: str, conversation_state) -> ModelType:
-        """Aggressive cost management - use ultra-cheap GPT models"""
+        """Use two middle-tier models for aggressive cost management"""
         remaining_budget = self.get_remaining_budget(conversation_state)
         
-        # Use GPT-4o-mini if we have reasonable budget
-        if remaining_budget >= 0.02:
+        # Use GPT-4o-mini as primary middle-tier choice
+        if remaining_budget >= 0.01:
             return ModelType.GPT_4O_MINI
         
-        # Use GPT-4.1-nano for ultra-cheap when budget is very tight
-        if remaining_budget < 0.01:
-            return ModelType.GPT_4_1_NANO
-        
-        # Use GPT-4.1-mini as mid-tier option
+        # Use GPT-4.1-mini as secondary middle-tier choice
         return ModelType.GPT_4_1_MINI
     
     def should_use_fallback(self, conversation_state) -> bool:

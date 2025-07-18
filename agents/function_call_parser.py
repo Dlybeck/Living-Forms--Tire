@@ -68,47 +68,29 @@ class FunctionCallParser:
     def _extract_function_calls(self, ai_response: str) -> List[Tuple[str, str]]:
         """
         Extract function calls from AI response.
-        
-        Expected format: [FUNCTION_CALL] function_name(arguments)
+        Handles:
+        - [FUNCTION_CALL] function_name(...)
+        - function_name(...) in code blocks or plain text
         """
-        # Find all [FUNCTION_CALL] markers
-        call_markers = list(re.finditer(r'\[FUNCTION_CALL\]', ai_response, re.IGNORECASE))
-        
+        import re
         function_calls = []
+        # 1. Extract [FUNCTION_CALL] markers
+        call_markers = list(re.finditer(r'\[FUNCTION_CALL\]', ai_response, re.IGNORECASE))
         for marker in call_markers:
-            # Find the function name after the marker
             after_marker = ai_response[marker.end():].strip()
-            func_match = re.match(r'\s*(\w+)\s*\(', after_marker)
-            if not func_match:
-                continue
-                
-            func_name = func_match.group(1)
-            
-            # Find the opening parenthesis
-            open_paren_pos = after_marker.find('(')
-            if open_paren_pos == -1:
-                continue
-                
-            # Find the matching closing parenthesis
-            paren_count = 0
-            args_start = open_paren_pos + 1
-            args_end = args_start
-            
-            for i, char in enumerate(after_marker[args_start:], args_start):
-                if char == '(':
-                    paren_count += 1
-                elif char == ')':
-                    if paren_count == 0:
-                        args_end = i
-                        break
-                    paren_count -= 1
-            
-            if args_end > args_start:
-                args_str = after_marker[args_start:args_end].strip()
-                if args_str:
-                    function_calls.append((func_name, args_str))
-                    logger.info(f"Found function call: {func_name}({args_str[:100]}...)")  # Log first 100 chars to avoid truncation
-        
+            func_match = re.match(r'(\w+)\s*\((.*)\)', after_marker)
+            if func_match:
+                func_name = func_match.group(1)
+                args_str = func_match.group(2)
+                function_calls.append((func_name, args_str))
+        # 2. Extract function calls from code blocks and plain text
+        code_block_pattern = r'(?:```[a-zA-Z]*\n)?([a-zA-Z_][a-zA-Z0-9_]*)\s*\(([^)]*)\)(?:\n```)?'
+        for match in re.finditer(code_block_pattern, ai_response):
+            func_name = match.group(1)
+            args_str = match.group(2)
+            # Avoid duplicates
+            if (func_name, args_str) not in function_calls:
+                function_calls.append((func_name, args_str))
         return function_calls
     
     def _extract_conversation_text(self, ai_response: str, function_calls: List[Tuple[str, str]]) -> str:

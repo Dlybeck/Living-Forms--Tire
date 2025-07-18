@@ -133,22 +133,22 @@ class AIClient:
                 except Exception as fallback1_error:
                     logger.error(f"🚨 GPT-4o-mini FALLBACK FAILED: {str(fallback1_error)}")
                     
-                    # Try GPT-4.1-nano (ultra-cheap)
+                    # Try GPT-4.1-mini (middle-tier)
                     try:
-                        logger.info("🔄 FALLBACK 2: Trying GPT-4.1-nano")
-                        fallback_config = self.model_mappings[ModelType.GPT_4_1_NANO]
+                        logger.info("🔄 FALLBACK 2: Trying GPT-4.1-mini (middle-tier)")
+                        fallback_config = self.model_mappings[ModelType.GPT_4_1_MINI]
                         response = await self._call_openai_api(prompt, fallback_config)
-                        cost = self._calculate_cost(response['usage'], ModelType.GPT_4_1_NANO)
+                        cost = self._calculate_cost(response['usage'], ModelType.GPT_4_1_MINI)
                         
                         return {
                             'text': response['text'],
                             'cost': cost,
                             'usage': response['usage'],
-                            'model': ModelType.GPT_4_1_NANO.value,
+                            'model': ModelType.GPT_4_1_MINI.value,
                             'provider': fallback_config['provider']
                         }
                     except Exception as fallback2_error:
-                        logger.error(f"🚨 GPT-4.1-nano FALLBACK FAILED: {str(fallback2_error)}")
+                        logger.error(f"🚨 GPT-4.1-mini FALLBACK FAILED: {str(fallback2_error)}")
                         
                         # Try Claude 3.5 Sonnet as web search fallback (cheaper than Claude!)
                         try:
@@ -218,7 +218,7 @@ class AIClient:
             missing_tire_specs.append('quantity_needed')
         
         # Import the system prompt from the prompts module
-        from prompts import SYSTEM_PROMPT
+        from prompts import get_main_system_prompt
         
         # Add function documentation if provided
         function_instructions = ""
@@ -240,7 +240,7 @@ class AIClient:
             """
         
         # Build the full prompt with context
-        system_prompt = SYSTEM_PROMPT + function_instructions + f"""
+        system_prompt = get_main_system_prompt() + function_instructions + f"""
         
         **CRITICAL MEMORY CONTEXT - READ CAREFULLY:**
         
