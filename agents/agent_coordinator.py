@@ -173,7 +173,7 @@ class AgentCoordinator:
             """,
             "conversation_text": "I'm experiencing some technical difficulties. Please try again.",
             "form_html": "",
-            "cost_info": {"total_cost": 0.0, "reasoning_model": "error", "form_model": "none"},
+            "cost_info": {"total_cost": 0.0, "model_used": "error"},
             "source": "coordinator_error",
             "coordinator_info": {
                 "error": error_message,

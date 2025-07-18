@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 class BaseAgent(ABC):
     """
     Base class for all specialized agents
-    Implements the two-model approach: large model for reasoning, small model for forms
+    Uses a single thinking model to generate both conversation and forms
     """
     
     def __init__(self, 
@@ -48,122 +48,76 @@ class BaseAgent(ABC):
                             roadmap: ConversationRoadmap,
                             conversation_context: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Process a message using the two-model approach:
-        1. Large model for reasoning and conversation (hidden, for debug only)
-        2. Small model for both chat and form generation (user-facing)
+        Process a message using a single thinking model approach:
+        1. Use a single model to generate both conversation and form
+        2. Parse the response to extract conversation text and form HTML
+        3. Ensure we always have both conversation and form
         """
         try:
-            # Step 1: Use large model for reasoning and conversation (hidden)
-            reasoning_response = await self._generate_reasoning_response(
+            # Use a single model for both conversation and form generation
+            response = await self._generate_conversation_and_form(
                 user_message, roadmap, conversation_context
             )
-            # Step 2: Use small model for both chat and form generation
-            form_response = await self._generate_form_and_chat_response(
-                user_message, roadmap, conversation_context, reasoning_response
-            )
-            # Step 3: Only show the mini model's output to the user; large model is for debug only
+            
             return {
-                "response": form_response.get("response", ""),
-                "conversation_text": reasoning_response.get('conversation_text', ''),  # for debug
-                "form_html": form_response.get("form_html", ""),
-                "inline_guidance": form_response.get("inline_guidance", None),
+                "response": response.get("response", ""),
+                "conversation_text": response.get("conversation_text", ""),
+                "form_html": response.get("form_html", ""),
+                "inline_guidance": response.get("inline_guidance", None),
                 "cost_info": {
-                    "reasoning_cost": reasoning_response.get("cost", 0.0),
-                    "form_cost": form_response.get("cost", 0.0),
-                    "total_cost": reasoning_response.get("cost", 0.0) + form_response.get("cost", 0.0),
-                    "reasoning_model": reasoning_response.get("model_used", "unknown"),
-                    "form_model": form_response.get("model_used", "none")
+                    "total_cost": response.get("cost", 0.0),
+                    "model_used": response.get("model_used", "unknown")
                 },
-                "source": f"{self.agent_name}_two_model"
+                "source": f"{self.agent_name}_single_model"
             }
         except Exception as e:
             logger.error(f"Error in {self.agent_name}: {str(e)}")
             return self._create_error_response(str(e))
     
-    async def _generate_reasoning_response(self, 
-                                         user_message: str,
-                                         roadmap: ConversationRoadmap,
-                                         conversation_context: Dict[str, Any]) -> Dict[str, Any]:
-        """Generate response using large model for reasoning"""
+    async def _generate_conversation_and_form(self, 
+                                            user_message: str,
+                                            roadmap: ConversationRoadmap,
+                                            conversation_context: Dict[str, Any]) -> Dict[str, Any]:
+        """Generate both conversation and form using a single model"""
         
         # Determine if we need web search
         needs_web_search = self._needs_web_search(user_message, roadmap)
         
-        # Use large model (GPT-4o-mini) for reasoning
-        reasoning_model = ModelType.GPT_4O_MINI
+        # Use GPT-4o-mini for both conversation and form generation
+        model = ModelType.GPT_4O_MINI
         
-        # Check if we can afford the large model
+        # Check if we can afford the model
         estimated_cost = self.cost_manager.estimate_cost(
             user_message + str(conversation_context),
-            reasoning_model
+            model
         )
         
-        if not self.cost_manager.can_afford_operation("reasoning", estimated_cost, roadmap):
+        if not self.cost_manager.can_afford_operation("conversation", estimated_cost, roadmap):
             # Fallback to smaller model
-            reasoning_model = ModelType.GPT_4_1_MINI
-            logger.info(f"Using fallback model {reasoning_model.value} for reasoning")
+            model = ModelType.GPT_4_1_MINI
+            logger.info(f"Using fallback model {model.value} for conversation")
         
         try:
+            # Add context about the current goal
+            conversation_context["current_goal"] = roadmap.get_current_goal().description
+            conversation_context["current_step"] = roadmap.current_step.value
+            conversation_context["needs_form"] = True
+            conversation_context["form_purpose"] = self._get_form_purpose(roadmap)
+            
+            # Generate response with function calls
             response = await self.ai_client.generate_response(
                 user_message=user_message,
                 conversation_context=conversation_context,
-                model_type=reasoning_model,
-                response_format="text",  # Just conversation, no function calls
+                model_type=model,
+                response_format="function_calls_and_chat",
+                function_documentation=self.function_parser.get_function_documentation(),
                 needs_web_search=needs_web_search
             )
             
             # Track cost
-            self.cost_manager.track_cost("reasoning", response["cost"], roadmap)
+            self.cost_manager.track_cost("conversation", response["cost"], roadmap)
             
-            return {
-                "conversation_text": response["text"],
-                "model_used": response["model"],
-                "cost": response["cost"],
-                "source": "reasoning"
-            }
-            
-        except Exception as e:
-            logger.error(f"Reasoning generation failed: {str(e)}")
-            return {
-                "conversation_text": "I'm having trouble processing that right now. Let me help you with basic information.",
-                "model_used": "fallback",
-                "cost": 0.0,
-                "source": "fallback"
-            }
-    
-    async def _generate_form_and_chat_response(self,
-                                    user_message: str,
-                                    roadmap: ConversationRoadmap,
-                                    conversation_context: Dict[str, Any],
-                                    reasoning_response: Dict[str, Any]) -> Dict[str, Any]:
-        """Generate both chat and form using the upgraded mini model (GPT-4o-mini), using the large model's output as context"""
-        # Use GPT-4o-mini for both chat and form
-        form_model = ModelType.GPT_4O_MINI
-        # Check if we can afford the form generation
-        estimated_cost = self.cost_manager.estimate_cost(
-            user_message + str(conversation_context),
-            form_model
-        )
-        if not self.cost_manager.can_afford_operation("form_generation", estimated_cost, roadmap):
-            logger.info("Skipping form generation due to budget constraints")
-            return {"response": "", "form_html": "", "model_used": "skipped"}
-        try:
-            # Add the large model's output to the context for the mini model
-            form_context = conversation_context.copy()
-            form_context["reasoning_text"] = reasoning_response.get("conversation_text", "")
-            form_context["needs_form"] = True
-            form_context["form_purpose"] = self._get_form_purpose(roadmap)
-            # Prompt the upgraded model to generate both chat and form
-            response = await self.ai_client.generate_response(
-                user_message=user_message,
-                conversation_context=form_context,
-                model_type=form_model,
-                response_format="function_calls_and_chat",
-                function_documentation=self.function_parser.get_function_documentation(),
-                needs_web_search=False
-            )
-            self.cost_manager.track_cost("form_generation", response["cost"], roadmap)
-            # Parse function calls and extract chat and form
+            # Parse function calls and extract conversation text and form HTML
             conversation_text, form_html = self.function_parser.parse_function_calls(response["text"])
             
             # Ensure we always have a response - never return None or empty
@@ -191,8 +145,9 @@ class BaseAgent(ABC):
                 "model_used": response["model"],
                 "cost": response["cost"]
             }
+            
         except Exception as e:
-            logger.error(f"Form generation failed: {str(e)}")
+            logger.error(f"Conversation generation failed: {str(e)}")
             # Create a fallback response that always works
             fallback_text = "I'm here to help you find the right tires. Let me ask you a few questions to get started."
             fallback_field = self.form_builder.create_textarea_field(
@@ -212,36 +167,8 @@ class BaseAgent(ABC):
                 "cost": 0.0
             }
     
-    def _combine_responses(self, 
-                          reasoning_response: Dict[str, Any],
-                          form_response: Dict[str, Any]) -> Dict[str, Any]:
-        """Combine reasoning and form responses"""
-        # Only show the form HTML in the main response; conversational text is for debug only
-        combined_html = form_response.get("form_html", "")
-        return {
-            "response": combined_html,
-            "conversation_text": reasoning_response.get('conversation_text', ''),
-            "form_html": form_response.get("form_html", ""),
-            "cost_info": {
-                "reasoning_cost": reasoning_response.get("cost", 0.0),
-                "form_cost": form_response.get("cost", 0.0),
-                "total_cost": reasoning_response.get("cost", 0.0) + form_response.get("cost", 0.0),
-                "reasoning_model": reasoning_response.get("model_used", "unknown"),
-                "form_model": form_response.get("model_used", "none")
-            },
-            "source": f"{self.agent_name}_two_model"
-        }
-    
     def _needs_web_search(self, user_message: str, roadmap: ConversationRoadmap) -> bool:
         """Determine if web search is needed"""
-        # Override in subclasses for specific logic
-        return False
-    
-    def _needs_form_generation(self, 
-                              user_message: str, 
-                              roadmap: ConversationRoadmap,
-                              reasoning_response: Dict[str, Any]) -> bool:
-        """Determine if form generation is needed"""
         # Override in subclasses for specific logic
         return False
     
@@ -260,7 +187,7 @@ class BaseAgent(ABC):
             """,
             "conversation_text": "I'm experiencing some technical difficulties. Please try again.",
             "form_html": "",
-            "cost_info": {"total_cost": 0.0, "reasoning_model": "error", "form_model": "none"},
+            "cost_info": {"total_cost": 0.0, "model_used": "error"},
             "source": f"{self.agent_name}_error"
         }
     

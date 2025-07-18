@@ -22,13 +22,13 @@ class TireSizeAgent(BaseAgent):
     
     def get_system_prompt(self) -> str:
         """Get the system prompt for tire size discovery"""
-        from prompts import get_tire_size_system_prompt
-        return get_tire_size_system_prompt()
+        from prompts import SYSTEM_PROMPT
+        return SYSTEM_PROMPT
     
     def get_agent_prompt(self) -> str:
         """Get the agent-specific prompt for tire size discovery"""
-        from prompts import get_tire_size_agent_prompt
-        return get_tire_size_agent_prompt()
+        from prompts import TIRE_SIZE_AGENT_PROMPT
+        return TIRE_SIZE_AGENT_PROMPT
     
     def _needs_web_search(self, user_message: str, roadmap: ConversationRoadmap) -> bool:
         """Determine if web search is needed for tire size discovery"""
@@ -48,34 +48,6 @@ class TireSizeAgent(BaseAgent):
         tire_size_keywords = ['tire size', 'what size', 'size tire', 'factory tire', 'oem tire']
         if any(keyword in user_message.lower() for keyword in tire_size_keywords):
             logger.info("Web search needed: User asking for tire size help")
-            return True
-        
-        return False
-    
-    def _needs_form_generation(self, user_message: str, roadmap: ConversationRoadmap, reasoning_response: Dict[str, Any]) -> bool:
-        """Determine if form generation is needed for tire size discovery"""
-        
-        # Check if we already have tire size
-        tire_specs = roadmap.get_shared_data(DataCategory.TIRE_SPECS)
-        if tire_specs and tire_specs.get('current_tire_size'):
-            logger.info("No form needed: Already have tire size")
-            return False
-        
-        # Check if user provided tire size in message
-        if self._extract_tire_size_from_message(user_message):
-            logger.info("No form needed: Tire size found in message")
-            return False
-        
-        # Check if we need to collect information
-        vehicle_info = roadmap.get_shared_data(DataCategory.VEHICLE_INFO)
-        if not vehicle_info or not (vehicle_info.get('make') and vehicle_info.get('model')):
-            logger.info("Form needed: Missing vehicle information")
-            return True
-        
-        # Check if user needs help with alternative methods
-        help_keywords = ['not sure', 'don\'t know', 'help', 'how to find', 'where to look']
-        if any(keyword in user_message.lower() for keyword in help_keywords):
-            logger.info("Form needed: User needs help with tire size discovery")
             return True
         
         return False
@@ -111,24 +83,29 @@ class TireSizeAgent(BaseAgent):
                 'source': 'user_input'
             })
             logger.info(f"Extracted tire size from message: {tire_size}")
+        
         # Extract vehicle info if present
         vehicle_info = self._extract_vehicle_info(user_message)
         if vehicle_info:
             self.update_roadmap_data(roadmap, DataCategory.VEHICLE_INFO, vehicle_info)
             logger.info(f"Extracted vehicle info: {vehicle_info}")
+        
         # If the user has answered the initial info_method question, advance the roadmap
         info_method = roadmap.get_shared_data(DataCategory.VEHICLE_INFO)
         if info_method and info_method.get('method') in ['direct_input', 'vin', 'make_model_year', 'need_help']:
             if roadmap.current_step == ConversationStep.GREETING:
                 roadmap.advance_to_next_step()
                 logger.info("Advanced from greeting to tire size discovery step after info_method submission")
+        
         # Process with base agent logic
         response = await super().process_message(user_message, roadmap, conversation_context)
+        
         # Check if we can advance to next step
         if roadmap.has_data_for_category(DataCategory.TIRE_SPECS):
             if roadmap.can_advance_to_step(ConversationStep.DRIVING_INFO_COLLECTION):
                 roadmap.advance_to_next_step()
                 logger.info("Advanced to driving info collection step")
+        
         return response
     
     def _extract_vehicle_info(self, user_message: str) -> Optional[Dict[str, str]]:

@@ -4,10 +4,8 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 import uvicorn
-import json
-import time
 from datetime import datetime
-from typing import Dict, List, Optional, Any
+from typing import Dict, Optional, Any
 import logging
 
 # Configure logging
@@ -16,11 +14,10 @@ logger = logging.getLogger(__name__)
 
 # Import our modules
 from agents.agent_coordinator import AgentCoordinator
-from agents.cost_manager import CostManager
+from agents.cost_manager import CostManager, ModelType
 from utils.conversation_roadmap import ConversationRoadmap, DataCategory
 from database.tire_database import TireDatabase
 from agents.ai_client import AIClient
-from agents.cost_manager import ModelType
 from agents.form_builder import FormBuilder
 
 app = FastAPI(title="Living Form Tire Sales Agent", version="1.0.0")
@@ -29,11 +26,11 @@ app = FastAPI(title="Living Form Tire Sales Agent", version="1.0.0")
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
-# Initialize core components
+# Initialize components
 tire_db = TireDatabase()
-cost_manager = CostManager(config={"strategy": "generous", "conversation_budget": 0.20})
+cost_manager = CostManager(config={"conversation_budget": 0.20})
 ai_client = AIClient()
-form_builder = FormBuilder()  # Initialize the form builder properly
+form_builder = FormBuilder()
 agent_coordinator = AgentCoordinator(ai_client, cost_manager, form_builder, tire_db)
 
 # In-memory session storage (replace with Redis/DB in production)
@@ -60,10 +57,7 @@ async def get_chat_interface(request: Request):
 
 @app.get("/welcome", response_model=ChatResponse)
 async def get_welcome_message():
-    """Get the preset welcome message with initial form"""
-    # Instead of a hardcoded form, let the AI generate the first message and form
-    # Simulate an empty conversation and let the agent handle the greeting
-    # We'll call the agent coordinator with an empty roadmap and no user message
+    """Get the initial welcome message with form"""
     roadmap = ConversationRoadmap()
     conversation_context = {"session_id": "welcome"}
     response_data = await agent_coordinator.process_message(
@@ -92,7 +86,6 @@ async def chat_endpoint(chat_request: ChatMessage):
         
         # Update form data if provided
         if chat_request.form_data:
-            # Process form data and update roadmap
             for key, value in chat_request.form_data.items():
                 if key == "info_method":
                     if value == "tire_size":
@@ -104,7 +97,7 @@ async def chat_endpoint(chat_request: ChatMessage):
                     elif value == "not_sure":
                         roadmap.update_shared_data(DataCategory.VEHICLE_INFO, {"method": "need_help"})
         
-        # Build conversation context with initial answer if present
+        # Build conversation context
         conversation_context = {"session_id": chat_request.session_id}
         info_method = roadmap.get_shared_data(DataCategory.VEHICLE_INFO)
         if info_method and info_method.get('method'):
@@ -120,21 +113,8 @@ async def chat_endpoint(chat_request: ChatMessage):
         # Update session storage
         active_sessions[chat_request.session_id] = roadmap
         
-        # DEBUG: Add AI response box for debugging (remove this later)
-        debug_ai_response = ""
-        if response_data.get("conversation_text"):
-            debug_ai_response = f"""
-            <div style="background:#f0f0f0;padding:10px;margin-bottom:10px;border-left:4px solid #ff6b6b;font-family:monospace;font-size:12px;">
-                <strong>🔍 DEBUG: AI Response</strong><br>
-                {response_data.get("conversation_text", "")}
-            </div>
-            """
-        
-        # Combine the debug response with the main response
-        combined_response = debug_ai_response + (response_data.get("response") or "")
-        
         return ChatResponse(
-            response=combined_response,
+            response=response_data.get("response") or "",
             form_html=None,  # Form HTML is already included in the response
             inline_guidance=response_data.get("inline_guidance"),
             conversation_state=roadmap.current_step.value,
@@ -153,11 +133,13 @@ async def get_session_costs(session_id: str):
         raise HTTPException(status_code=404, detail="Session not found")
     
     roadmap = active_sessions[session_id]
+    cost_summary = cost_manager.get_cost_summary(roadmap)
+    
     return {
-        "total_cost": 0.0,  # Will be tracked in cost manager
-        "interactions": len(roadmap.conversation_history),
-        "cost_breakdown": {},  # Will be tracked in cost manager
-        "budget_remaining": cost_manager.get_remaining_budget({"session_id": session_id})
+        "total_cost": cost_summary["total_cost"],
+        "interactions": cost_summary["interactions_count"],
+        "cost_breakdown": cost_summary["cost_breakdown"],
+        "budget_remaining": cost_summary["budget_remaining"]
     }
 
 @app.get("/health")
@@ -172,10 +154,27 @@ async def health_check():
 @app.get("/test-ai")
 async def test_ai_endpoint():
     """Test AI endpoints to check if they're working"""
-    
     test_results = {}
     
-    # Test Anthropic Claude 3.5 Sonnet
+    # Test OpenAI GPT-4o-mini (primary model)
+    try:
+        response = await ai_client.generate_response(
+            user_message="Hello, this is a test message.",
+            conversation_context={"current_step": "test"},
+            model_type=ModelType.GPT_4O_MINI
+        )
+        test_results["openai_gpt_4o_mini"] = {
+            "status": "success",
+            "model": response.get("model", "unknown"),
+            "cost": response.get("cost", 0.0)
+        }
+    except Exception as e:
+        test_results["openai_gpt_4o_mini"] = {
+            "status": "failed",
+            "error": str(e)
+        }
+    
+    # Test Anthropic Claude 3.5 Sonnet (fallback)
     try:
         response = await ai_client.generate_response(
             user_message="Hello, this is a test message.",
@@ -193,30 +192,10 @@ async def test_ai_endpoint():
             "error": str(e)
         }
     
-    # Test OpenAI GPT-4o
-    try:
-        response = await ai_client.generate_response(
-            user_message="Hello, this is a test message.",
-            conversation_context={"current_step": "test"},
-            model_type=ModelType.GPT_4O
-        )
-        test_results["openai_gpt_4o"] = {
-            "status": "success",
-            "model": response.get("model", "unknown"),
-            "cost": response.get("cost", 0.0)
-        }
-    except Exception as e:
-        test_results["openai_gpt_4o"] = {
-            "status": "failed",
-            "error": str(e)
-        }
-    
     return {
         "timestamp": datetime.now().isoformat(),
         "test_results": test_results
     }
-
-
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000, reload=True) 

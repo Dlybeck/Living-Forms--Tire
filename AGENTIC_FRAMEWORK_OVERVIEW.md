@@ -1,18 +1,19 @@
 # Agentic Framework Overview
 
 ## Introduction
-This document describes the **agentic (double-agent/two-model) framework** used in the Living Form Tire Sales Assistant. It covers the architecture, agent roles, model usage, data flow, and design philosophy, so you can recreate or extend the system as needed.
+This document describes the **agentic framework** used in the Living Form Tire Sales Assistant. It covers the architecture, agent roles, model usage, data flow, and design philosophy, so you can recreate or extend the system as needed.
 
 ---
 
 ## 1. **Core Principles**
-- **Separation of Reasoning and Formatting:**
-  - Use a powerful "reasoning" model for planning, context, and conversation logic (hidden from the user).
-  - Use a separate "formatting" model for all user-facing output (chat + form), leveraging the reasoning model's output as context.
+- **Single Model Per Goal:**
+  - Each conversation goal is handled by a specialized agent with a single thinking model
+  - The model generates both conversation text and form fields in one response
+  - No complex double-model coordination needed
 - **Agent Specialization:**
-  - Each step in the roadmap is handled by a specialized agent with a clear, concrete purpose.
+  - Each step in the roadmap is handled by a specialized agent with a clear, concrete purpose
 - **Living Form Experience:**
-  - The system adapts to user responses, always presents actionable forms, and never gets stuck.
+  - The system adapts to user responses, always presents actionable forms, and never gets stuck
 
 ---
 
@@ -64,29 +65,27 @@ This document describes the **agentic (double-agent/two-model) framework** used 
    - Advances the roadmap if needed.
    - Calls `BaseAgent.process_message(...)`.
 4. **BaseAgent.process_message**:
-   - Calls `_generate_reasoning_response` (large model, hidden).
-   - Calls `_generate_form_and_chat_response` (mini model, user-facing), passing the large model's output as context.
-   - Returns only the mini model's output to the user.
-5. **FunctionCallParser** extracts and renders form fields from the mini model's output (supports flexible formats: `[FUNCTION_CALL]`, code blocks, or plain text).
+   - Calls `_generate_conversation_and_form` (single model).
+   - Parses the response to extract conversation text and form HTML.
+   - Returns the combined response to the user.
+5. **FunctionCallParser** extracts and renders form fields from the model's output.
 6. **Frontend** displays the chat and form to the user.
 
 ---
 
 ## 4. **Model Selection**
-- **Large Model:**
-  - Typically GPT-4o or GPT-4o-mini (for best reasoning and context handling).
-- **Mini Model:**
-  - Can be GPT-4o-mini, GPT-4.1-mini, or even full GPT-4o, depending on reliability and cost.
-  - Should be chosen for its ability to follow formatting instructions and generate both chat and form fields.
+- **Primary Model:**
+  - GPT-4o-mini (for best reasoning and form generation capability).
+- **Fallback Models:**
+  - GPT-4.1-mini (if budget constraints apply)
+  - Claude 3.5 Sonnet (if OpenAI models fail)
 
 ---
 
 ## 5. **Prompting Philosophy**
-- **Large Model Prompt:**
-  - Focuses on reasoning, planning, and context.
-  - Output is for the mini model, not the user.
-- **Mini Model Prompt:**
-  - Instructs the model to generate both a friendly chat message and actionable form fields.
+- **Single Model Prompt:**
+  - Focuses on both reasoning and form generation.
+  - Output is directly for the user.
   - Requires function calls to be output in a flexible, parser-friendly format (e.g., `[FUNCTION_CALL] create_radio_field(...)`).
   - Chat and form must be clearly separated (e.g., with a divider like `---`).
   - No code blocks, bullets, or markdown for function calls unless parser supports it.
@@ -102,43 +101,43 @@ This document describes the **agentic (double-agent/two-model) framework** used 
 - **To change models:**
   - Update the model type in the agent or base agent logic.
 - **To change output format:**
-  - Update the mini model prompt and the function call parser as needed.
+  - Update the model prompt and the function call parser as needed.
 
 ---
 
 ## 7. **Debugging and Best Practices**
-- Always log or print the raw output from both models for debugging.
-- If forms stop rendering, check the mini model's output format and the parser.
+- Always log or print the raw output from the model for debugging.
+- If forms stop rendering, check the model's output format and the parser.
 - Use strict prompting and flexible parsing for best results.
-- Never show the large model's output to the user (except in debug mode).
+- The model's output is shown directly to the user.
 
 ---
 
 ## 8. **Summary Table**
 
-| Step                | Agent                | Large Model (Reasoning) | Mini Model (Formatting) | Output to User |
-|---------------------|----------------------|-------------------------|------------------------|----------------|
-| Tire Size Discovery | TireSizeAgent        | GPT-4o / 4o-mini        | GPT-4o-mini / 4.1-mini | Mini only      |
-| Driving Info        | DrivingInfoAgent     | GPT-4o / 4o-mini        | GPT-4o-mini / 4.1-mini | Mini only      |
-| Preferences         | PreferencesAgent     | GPT-4o / 4o-mini        | GPT-4o-mini / 4.1-mini | Mini only      |
-| Recommendations     | RecommendationAgent  | GPT-4o / 4o-mini        | GPT-4o-mini / 4.1-mini | Mini only      |
+| Step                | Agent                | Model                | Output to User |
+|---------------------|----------------------|----------------------|----------------|
+| Tire Size Discovery | TireSizeAgent        | GPT-4o-mini          | Single model   |
+| Driving Info        | DrivingInfoAgent     | GPT-4o-mini          | Single model   |
+| Preferences         | PreferencesAgent     | GPT-4o-mini          | Single model   |
+| Recommendations     | RecommendationAgent  | GPT-4o-mini          | Single model   |
 
 ---
 
 ## 9. **Design Philosophy**
 - **Agentic:** Each step is handled by a specialized agent for modularity and clarity.
-- **Double-Agent:** Two models per step: one for reasoning, one for formatting.
+- **Single Model:** One model per step handles both reasoning and form generation.
 - **Living Form:** The system adapts, never gets stuck, and always presents actionable forms.
-- **Separation of Concerns:** Reasoning and formatting are handled by different models for maximum flexibility and reliability.
+- **Simplified:** No complex double-model coordination, just clean single-model responses.
 
 ---
 
 ## 10. **Recreating the Framework**
 - Follow the architecture and data flow above.
-- Use strict prompting for the mini model and flexible parsing.
-- Always keep the large model’s output hidden from the user.
+- Use strict prompting for the model and flexible parsing.
+- Always ensure the model generates both conversation and forms.
 - Modularize each step as its own agent for easy extension.
 
 ---
 
-**This framework is designed for maximum flexibility, reliability, and a truly “living” form experience.** 
+**This framework is designed for maximum simplicity, reliability, and a truly "living" form experience.** 

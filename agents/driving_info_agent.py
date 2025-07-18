@@ -21,13 +21,13 @@ class DrivingInfoAgent(BaseAgent):
     
     def get_system_prompt(self) -> str:
         """Get the system prompt for driving info collection"""
-        from prompts import get_driving_info_system_prompt
-        return get_driving_info_system_prompt()
+        from prompts import SYSTEM_PROMPT
+        return SYSTEM_PROMPT
     
     def get_agent_prompt(self) -> str:
         """Get the agent-specific prompt for driving info collection"""
-        from prompts import get_driving_info_agent_prompt
-        return get_driving_info_agent_prompt()
+        from prompts import DRIVING_INFO_AGENT_PROMPT
+        return DRIVING_INFO_AGENT_PROMPT
     
     def _needs_web_search(self, user_message: str, roadmap: ConversationRoadmap) -> bool:
         """Determine if web search is needed for driving info collection"""
@@ -42,33 +42,6 @@ class DrivingInfoAgent(BaseAgent):
         condition_keywords = ['snow', 'rain', 'winter', 'summer', 'all-season', 'off-road']
         if any(keyword in user_message.lower() for keyword in condition_keywords):
             logger.info("Web search needed: User asking about specific driving conditions")
-            return True
-        
-        return False
-    
-    def _needs_form_generation(self, user_message: str, roadmap: ConversationRoadmap, reasoning_response: Dict[str, Any]) -> bool:
-        """Determine if form generation is needed for driving info collection"""
-        
-        # Check if we already have comprehensive driving info
-        driving_patterns = roadmap.get_shared_data(DataCategory.DRIVING_PATTERNS)
-        if driving_patterns and self._has_comprehensive_driving_info(driving_patterns):
-            logger.info("No form needed: Already have comprehensive driving info")
-            return False
-        
-        # Check if user provided driving info in message
-        if self._extract_driving_info_from_message(user_message):
-            logger.info("No form needed: Driving info found in message")
-            return False
-        
-        # Check if we need to collect more information
-        if not driving_patterns or not self._has_basic_driving_info(driving_patterns):
-            logger.info("Form needed: Missing basic driving information")
-            return True
-        
-        # Check if user needs help with specific aspects
-        help_keywords = ['not sure', 'don\'t know', 'help', 'what do you mean', 'explain']
-        if any(keyword in user_message.lower() for keyword in help_keywords):
-            logger.info("Form needed: User needs help with driving info")
             return True
         
         return False
