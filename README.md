@@ -119,7 +119,7 @@ This ensures:
 
 5. **Run the application**:
    ```bash
-   python main.py
+   uvicorn main:app --reload --port 8000
    ```
 
 6. **Open your browser** to `http://localhost:8000`

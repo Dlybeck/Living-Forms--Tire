@@ -24,18 +24,19 @@ class AIClient:
             'anthropic': 'https://api.anthropic.com/v1/messages'
         }
         
-        # Simplified model mappings - only the models we actually use
+        # Simplified model mappings - prioritize GPT-4.1 for better responses
         self.model_mappings = {
+            ModelType.GPT_4_1_MINI: {
+                'provider': 'openai',
+                'model_name': 'gpt-4.1-mini',
+                'max_tokens': 4096,
+                'web_search': True
+            },
             ModelType.GPT_4O_MINI: {
                 'provider': 'openai',
                 'model_name': 'gpt-4o-mini',
                 'max_tokens': 4096,
                 'web_search': True
-            },
-            ModelType.GPT_4_1_MINI: {
-                'provider': 'openai',
-                'model_name': 'gpt-4.1-mini',
-                'max_tokens': 4096
             },
             ModelType.CLAUDE_3_5_SONNET: {
                 'provider': 'anthropic', 
@@ -101,6 +102,7 @@ class AIClient:
         # Add function documentation if provided
         if function_documentation:
             system_prompt += f"\n\n**FUNCTION DOCUMENTATION:**\n{function_documentation}"
+            logger.info(f"Added function documentation to prompt: {function_documentation[:200]}...")
         
         # Add conversation context
         context_info = self._format_conversation_context(conversation_context)
@@ -108,11 +110,17 @@ class AIClient:
         # Build the full prompt
         prompt = f"{system_prompt}\n\n{context_info}\n\nUser: {user_message}\n\nAssistant:"
         
+        logger.info(f"Built prompt length: {len(prompt)} characters")
+        logger.info(f"Prompt ends with: {prompt[-200:]}...")
+        
         return prompt
     
     def _format_conversation_context(self, conversation_context: Dict[str, Any]) -> str:
         """Format conversation context for the AI"""
         context_parts = []
+        
+        # Debug logging
+        logger.info(f"Formatting conversation context: {conversation_context}")
         
         # Add current goal if available
         if 'current_goal' in conversation_context:
@@ -126,10 +134,66 @@ class AIClient:
         if 'form_purpose' in conversation_context:
             context_parts.append(f"Form Purpose: {conversation_context['form_purpose']}")
         
-        if context_parts:
-            return "Context:\n" + "\n".join(f"- {part}" for part in context_parts)
+        # Add user selected method if available (CRITICAL for initial form handling)
+        if 'user_selected_method' in conversation_context:
+            context_parts.append(f"User Selected Method: {conversation_context['user_selected_method']}")
+            context_parts.append("Form Submission: True")
         
-        return ""
+        if 'form_submission' in conversation_context:
+            context_parts.append("Form Submission: True")
+        
+        # Add conversation history if available
+        if 'conversation_history' in conversation_context and conversation_context['conversation_history']:
+            history = conversation_context['conversation_history']
+            context_parts.append("Conversation History:")
+            for event in history[-10:]:  # Include last 10 events to avoid token limits
+                event_type = event.get('type', 'unknown')
+                step = event.get('step', 'unknown')
+                timestamp = event.get('timestamp', 'unknown')
+                data = event.get('data', {})
+                
+                if event_type == 'data_updated':
+                    category = data.get('category', 'unknown')
+                    context_parts.append(f"  - {timestamp}: Updated {category} data")
+                elif event_type == 'step_advanced':
+                    context_parts.append(f"  - {timestamp}: Advanced to {step}")
+                elif event_type == 'method_selected':
+                    method = data.get('method', 'unknown')
+                    context_parts.append(f"  - {timestamp}: User selected method: {method}")
+                elif event_type == 'form_submission':
+                    form_data = data.get('form_data', {})
+                    if form_data:
+                        # Show what the user answered in the form
+                        answers = []
+                        for field, value in form_data.items():
+                            if field != 'additional_notes':  # Skip the auto-added field
+                                answers.append(f"{field}: {value}")
+                        if answers:
+                            context_parts.append(f"  - {timestamp}: User answered form: {', '.join(answers)}")
+                elif event_type == 'user_message':
+                    context_parts.append(f"  - {timestamp}: User sent message")
+                elif event_type == 'ai_response':
+                    context_parts.append(f"  - {timestamp}: AI responded")
+                else:
+                    context_parts.append(f"  - {timestamp}: {event_type} at {step}")
+        
+        # Add conversation summary if available
+        if 'conversation_summary' in conversation_context:
+            summary = conversation_context['conversation_summary']
+            context_parts.append(f"Conversation Summary: {summary.get('current_goal', 'Unknown goal')}")
+            if summary.get('completed_goals'):
+                context_parts.append(f"Completed Steps: {', '.join(summary['completed_goals'])}")
+            if summary.get('missing_data'):
+                context_parts.append(f"Missing Data: {', '.join(summary['missing_data'])}")
+        
+        # Add notepad information if available
+        if 'notepad_summary' in conversation_context:
+            context_parts.append(f"AI Notepad:\n{conversation_context['notepad_summary']}")
+        
+        formatted_context = "Context:\n" + "\n".join(f"- {part}" for part in context_parts) if context_parts else ""
+        logger.info(f"Formatted context: {formatted_context}")
+        
+        return formatted_context
     
     async def _call_openai_api(self, prompt: str, model_config: Dict[str, Any]) -> Dict[str, Any]:
         """Call OpenAI API"""

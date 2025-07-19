@@ -54,10 +54,25 @@ class BaseAgent(ABC):
         3. Ensure we always have both conversation and form
         """
         try:
+            # Add conversation event for user message
+            roadmap.add_conversation_event("user_message", {
+                "agent": self.agent_name,
+                "message_length": len(user_message),
+                "has_form_data": bool(conversation_context.get("form_data"))
+            })
+            
             # Use a single model for both conversation and form generation
             response = await self._generate_conversation_and_form(
                 user_message, roadmap, conversation_context
             )
+            
+            # Add conversation event for AI response
+            roadmap.add_conversation_event("ai_response", {
+                "agent": self.agent_name,
+                "response_length": len(response.get("response", "")),
+                "has_form": bool(response.get("form_html")),
+                "model_used": response.get("model_used", "unknown")
+            })
             
             return {
                 "response": response.get("response", ""),
@@ -83,8 +98,8 @@ class BaseAgent(ABC):
         # Determine if we need web search
         needs_web_search = self._needs_web_search(user_message, roadmap)
         
-        # Use GPT-4o-mini for both conversation and form generation
-        model = ModelType.GPT_4O_MINI
+        # Use GPT-4.1 for better responses
+        model = ModelType.GPT_4_1_MINI
         
         # Check if we can afford the model
         estimated_cost = self.cost_manager.estimate_cost(
@@ -94,8 +109,10 @@ class BaseAgent(ABC):
         
         if not self.cost_manager.can_afford_operation("conversation", estimated_cost, roadmap):
             # Fallback to smaller model
-            model = ModelType.GPT_4_1_MINI
-            logger.info(f"Using fallback model {model.value} for conversation")
+            model = ModelType.GPT_4O_MINI
+            logger.info(f"Using fallback model {model.value} for conversation due to cost constraints")
+        else:
+            logger.info(f"Using GPT-4.1 for conversation")
         
         try:
             # Add context about the current goal
@@ -117,8 +134,14 @@ class BaseAgent(ABC):
             # Track cost
             self.cost_manager.track_cost("conversation", response["cost"], roadmap)
             
+            # Debug logging
+            logger.info(f"AI generated response: {response['text'][:500]}...")
+            
             # Parse function calls and extract conversation text and form HTML
             conversation_text, form_html = self.function_parser.parse_function_calls(response["text"])
+            
+            logger.info(f"Parsed conversation text: {conversation_text[:200]}...")
+            logger.info(f"Form HTML generated: {form_html is not None}")
             
             # Ensure we always have a response - never return None or empty
             if not conversation_text or conversation_text.strip() == "":
@@ -135,11 +158,9 @@ class BaseAgent(ABC):
                 )
                 form_html = self.form_builder.create_complete_form([fallback_field], conversation_text)
             
-            # Combine conversation text and form HTML into a single response
-            combined_response = f"<div style='margin-bottom:18px'>{conversation_text}</div>{form_html}"
-            
+            # Return conversation text and form HTML separately - let frontend handle combination
             return {
-                "response": combined_response,
+                "response": conversation_text,  # Just the conversation text
                 "conversation_text": conversation_text,
                 "form_html": form_html,
                 "model_used": response["model"],
@@ -157,10 +178,9 @@ class BaseAgent(ABC):
                 placeholder="Ask a question, add details, or tell me anything..."
             )
             fallback_form = self.form_builder.create_complete_form([fallback_field], fallback_text)
-            fallback_response = f"<div style='margin-bottom:18px'>{fallback_text}</div>{fallback_form}"
             
             return {
-                "response": fallback_response,
+                "response": fallback_text,  # Just the conversation text
                 "conversation_text": fallback_text,
                 "form_html": fallback_form,
                 "model_used": "fallback",

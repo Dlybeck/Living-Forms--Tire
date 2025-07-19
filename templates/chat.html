@@ -25,10 +25,102 @@
             flex: 1;
             display: flex;
             flex-direction: column;
-            max-width: 800px;
+            max-width: 1200px;  /* Increased width to accommodate notepad */
             margin: 0 auto;
             background: white;
             box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+
+        .chat-layout {
+            display: flex;
+            flex: 1;
+        }
+
+        .chat-main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .notepad-sidebar {
+            width: 350px;
+            background: #f8f9fa;
+            border-left: 1px solid #e1e5e9;
+            display: flex;
+            flex-direction: column;
+            max-height: 100vh;
+            overflow: hidden;
+        }
+
+        .notepad-header {
+            background: #667eea;
+            color: white;
+            padding: 15px;
+            font-weight: 500;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .notepad-toggle {
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            font-size: 16px;
+            padding: 5px;
+        }
+
+        .notepad-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.4;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .notepad-content h1 {
+            font-size: 16px;
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .notepad-content h2 {
+            font-size: 14px;
+            margin: 15px 0 8px 0;
+            color: #667eea;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 3px;
+        }
+
+        .notepad-content ul {
+            margin: 5px 0;
+            padding-left: 20px;
+        }
+
+        .notepad-content li {
+            margin-bottom: 3px;
+        }
+
+        .notepad-hidden {
+            display: none;
+        }
+
+        .notepad-indicator {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #667eea;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            cursor: pointer;
+            z-index: 1000;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
         }
 
         .chat-header {
@@ -622,6 +714,26 @@
             .form-actions {
                 flex-direction: column;
             }
+
+            .notepad-sidebar {
+                display: none;
+            }
+
+            .notepad-indicator {
+                display: block !important;
+                position: fixed;
+                top: 10px;
+                right: 10px;
+                z-index: 1000;
+            }
+
+            .chat-layout {
+                flex-direction: column;
+            }
+
+            .chat-main {
+                width: 100%;
+            }
         }
     </style>
 </head>
@@ -636,13 +748,31 @@
             </div>
         </div>
 
-        <div class="main-form-area" id="main-form-area">
-            <!-- The living form and inline guidance will be rendered here -->
+        <div class="chat-layout">
+            <div class="chat-main">
+                <div class="main-form-area" id="main-form-area">
+                    <!-- The living form and inline guidance will be rendered here -->
+                </div>
+
+                <div class="loading" id="loading">
+                    <div class="spinner"></div>
+                    <p>Processing your request...</p>
+                </div>
+            </div>
+
+            <div class="notepad-sidebar" id="notepad-sidebar">
+                <div class="notepad-header">
+                    <span>📝 AI Notepad</span>
+                    <button class="notepad-toggle" id="notepad-toggle">−</button>
+                </div>
+                <div class="notepad-content" id="notepad-content">
+                    <em>No information recorded yet...</em>
+                </div>
+            </div>
         </div>
 
-        <div class="loading" id="loading">
-            <div class="spinner"></div>
-            <p>Processing your request...</p>
+        <div class="notepad-indicator" id="notepad-indicator" style="display: none;">
+            📝 View Notepad
         </div>
     </div>
 
@@ -666,6 +796,10 @@
                 this.loading = document.getElementById('loading');
                 this.sessionCostElement = document.getElementById('session-cost');
                 this.interactionCountElement = document.getElementById('interaction-count');
+                this.notepadSidebar = document.getElementById('notepad-sidebar');
+                this.notepadContent = document.getElementById('notepad-content');
+                this.notepadToggle = document.getElementById('notepad-toggle');
+                this.notepadIndicator = document.getElementById('notepad-indicator');
                 this.conversationHistory = [];
             }
 
@@ -678,22 +812,111 @@
                         this.handleFormSubmission(e.target);
                     }
                 });
+
+                // Notepad toggle functionality
+                this.notepadToggle.addEventListener('click', () => {
+                    this.toggleNotepad();
+                });
+
+                this.notepadIndicator.addEventListener('click', () => {
+                    this.showNotepad();
+                });
+            }
+
+            toggleNotepad() {
+                const isVisible = !this.notepadSidebar.classList.contains('notepad-hidden');
+                if (isVisible) {
+                    this.hideNotepad();
+                } else {
+                    this.showNotepad();
+                }
+            }
+
+            showNotepad() {
+                this.notepadSidebar.classList.remove('notepad-hidden');
+                this.notepadToggle.textContent = '−';
+                this.notepadIndicator.style.display = 'none';
+            }
+
+            hideNotepad() {
+                this.notepadSidebar.classList.add('notepad-hidden');
+                this.notepadToggle.textContent = '+';
+                this.notepadIndicator.style.display = 'block';
+            }
+
+            updateNotepad(content) {
+                if (content && content.trim() && content !== 'No information recorded yet.') {
+                    this.notepadContent.innerHTML = DOMPurify.sanitize(content);
+                    // Show indicator if notepad is hidden
+                    if (this.notepadSidebar.classList.contains('notepad-hidden')) {
+                        this.notepadIndicator.style.display = 'block';
+                    }
+                } else {
+                    this.notepadContent.innerHTML = '<em>No information recorded yet...</em>';
+                }
             }
 
             async loadFirstForm() {
-                // Load the preset welcome message with initial form - no loading needed since it's predetermined
-                try {
-                    const response = await fetch('/welcome');
-                    if (!response.ok) {
-                        throw new Error(`API error: ${response.status}`);
-                    }
-                    const welcomeData = await response.json();
-                    this.renderForm(welcomeData, true);
-                    this.updateCostTracker(welcomeData.cost_info);
-                } catch (error) {
-                    this.renderError('Sorry, I encountered an error loading the welcome form. Please try again.');
-                    console.error('Initial form load error:', error);
-                }
+                // Show the default initial form immediately
+                const defaultForm = this.createDefaultInitialForm();
+                this.mainFormArea.innerHTML = defaultForm;
+            }
+
+            createDefaultInitialForm() {
+                return `
+                    <div class="ai-response" style="background:white;padding:20px;border-radius:12px;margin-bottom:20px;border:1px solid #e1e5e9;font-size:15px;line-height:1.6;box-shadow:0 2px 4px rgba(0,0,0,0.1);">
+                        <h3 style="color:#667eea;margin:0 0 15px 0;font-size:20px;">🚗 Welcome to Your Tire Search!</h3>
+                        <p style="margin-bottom:15px;">I'm here to help you find the perfect tires for your vehicle. To get started, I need to know how you'd like to provide your vehicle information.</p>
+                        <p style="margin-bottom:20px;color:#666;font-size:14px;">Choose the option that works best for you:</p>
+                    </div>
+                    
+                    <div class="living-form" style="background:#f8f9fa;border:2px solid #e9ecef;border-radius:12px;padding:20px;margin-top:15px;">
+                        <form id="initial-form" data-form-type="initial">
+                            <div style="margin-bottom:20px;">
+                                <label style="display:block;margin-bottom:10px;font-weight:500;color:#495057;font-size:16px;">How would you like to provide your vehicle information?</label>
+                                <div style="margin-left:10px;">
+                                    <label style="display:flex;align-items:center;margin-bottom:15px;cursor:pointer;padding:10px;border-radius:8px;transition:background-color 0.2s;">
+                                        <input type="radio" name="info_method" value="tire_size" style="margin-right:12px;transform:scale(1.2);">
+                                        <div>
+                                            <span style="font-weight:500;color:#333;">I know my tire size</span>
+                                            <div style="font-size:13px;color:#666;margin-top:2px;">I have the tire size (like 225/60R16) from my current tires</div>
+                                        </div>
+                                    </label>
+                                    
+                                    <label style="display:flex;align-items:center;margin-bottom:15px;cursor:pointer;padding:10px;border-radius:8px;transition:background-color 0.2s;">
+                                        <input type="radio" name="info_method" value="make_model_year" style="margin-right:12px;transform:scale(1.2);">
+                                        <div>
+                                            <span style="font-weight:500;color:#333;">I know my vehicle details</span>
+                                            <div style="font-size:13px;color:#666;margin-top:2px;">I have the make, model, year, and submodel of my vehicle</div>
+                                        </div>
+                                    </label>
+                                    
+                                    <label style="display:flex;align-items:center;margin-bottom:15px;cursor:pointer;padding:10px;border-radius:8px;transition:background-color 0.2s;">
+                                        <input type="radio" name="info_method" value="vin" style="margin-right:12px;transform:scale(1.2);">
+                                        <div>
+                                            <span style="font-weight:500;color:#333;">I have my VIN number</span>
+                                            <div style="font-size:13px;color:#666;margin-top:2px;">I can find my Vehicle Identification Number (17 characters)</div>
+                                        </div>
+                                    </label>
+                                    
+                                    <label style="display:flex;align-items:center;margin-bottom:15px;cursor:pointer;padding:10px;border-radius:8px;transition:background-color 0.2s;">
+                                        <input type="radio" name="info_method" value="not_sure" style="margin-right:12px;transform:scale(1.2);">
+                                        <div>
+                                            <span style="font-weight:500;color:#333;">I'm not sure, help me figure this out</span>
+                                            <div style="font-size:13px;color:#666;margin-top:2px;">I need help determining what information I have or how to find it</div>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <div class="form-actions" style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px;padding-top:15px;border-top:1px solid #e9ecef;">
+                                <button type="submit" class="btn-primary" style="background:#667eea;color:white;border:none;padding:12px 24px;border-radius:8px;font-size:14px;font-weight:500;cursor:pointer;transition:background-color 0.3s ease;">
+                                    Continue with Tire Search
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                `;
             }
 
             async handleFormSubmission(form) {
@@ -808,6 +1031,11 @@
                 
                 this.mainFormArea.innerHTML = html;
                 
+                // Update the notepad if content is provided
+                if (response.notepad_content) {
+                    this.updateNotepad(response.notepad_content);
+                }
+                
                 // Store response in history for internal tracking
                 this.conversationHistory.push({
                     type: 'assistant',
@@ -875,7 +1103,8 @@
                 }
                 
                 // For Living Form: Show AI response as conversation with embedded forms
-                if (response.response && response.response.trim()) {
+                // Only show conversation text separately if there's no form HTML or if the form HTML doesn't contain the conversation text
+                if (response.response && response.response.trim() && !response.form_html) {
                     // Only treat as HTML if it starts with a block-level tag
                     const blockLevelHtmlRegex = /^\s*<(div|form|h[1-6]|table|section|header|footer|main|article|nav|ul|ol|li|p|fieldset|legend|label|input|button|select|option|textarea|hr|br|img|span|style|script|link|meta|title|head|body|html)[\s>]/i;
                     const isBlockHtml = blockLevelHtmlRegex.test(response.response);
@@ -903,6 +1132,11 @@
                 
                 // Append the new content below existing content
                 this.mainFormArea.insertAdjacentHTML('beforeend', html);
+                
+                // Update the notepad if content is provided
+                if (response.notepad_content) {
+                    this.updateNotepad(response.notepad_content);
+                }
                 
                 // Store response in history for internal tracking
                 this.conversationHistory.push({

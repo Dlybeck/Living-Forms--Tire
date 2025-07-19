@@ -96,6 +96,26 @@ class TireSizeAgent(BaseAgent):
             if roadmap.current_step == ConversationStep.GREETING:
                 roadmap.advance_to_next_step()
                 logger.info("Advanced from greeting to tire size discovery step after info_method submission")
+                # Add conversation event for step advancement
+                roadmap.add_conversation_event("step_advanced", {
+                    "from_step": "greeting",
+                    "to_step": "tire_size_discovery",
+                    "trigger": "info_method_selected",
+                    "method": info_method.get('method')
+                })
+        
+        # Add user's chosen method to context for AI to use
+        if conversation_context.get('user_method'):
+            logger.info(f"User chose method: {conversation_context['user_method']}")
+            # Add this to the context that gets passed to the AI
+            conversation_context['user_selected_method'] = conversation_context['user_method']
+            conversation_context['form_submission'] = True
+            
+            # Add conversation event for method selection
+            roadmap.add_conversation_event("method_selected", {
+                "method": conversation_context['user_method'],
+                "agent": self.agent_name
+            })
         
         # Process with base agent logic
         response = await super().process_message(user_message, roadmap, conversation_context)

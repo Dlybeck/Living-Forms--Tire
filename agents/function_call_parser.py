@@ -74,6 +74,10 @@ class FunctionCallParser:
         """
         import re
         function_calls = []
+        
+        # Debug logging
+        logger.info(f"Extracting function calls from AI response: {ai_response[:500]}...")
+        
         # 1. Extract [FUNCTION_CALL] markers
         call_markers = list(re.finditer(r'\[FUNCTION_CALL\]', ai_response, re.IGNORECASE))
         for marker in call_markers:
@@ -83,6 +87,10 @@ class FunctionCallParser:
                 func_name = func_match.group(1)
                 args_str = func_match.group(2)
                 function_calls.append((func_name, args_str))
+                logger.info(f"Found [FUNCTION_CALL]: {func_name}({args_str[:100]}...)")
+            else:
+                logger.warning(f"Found [FUNCTION_CALL] marker but couldn't parse function: {after_marker[:100]}...")
+        
         # 2. Extract function calls from code blocks and plain text
         code_block_pattern = r'(?:```[a-zA-Z]*\n)?([a-zA-Z_][a-zA-Z0-9_]*)\s*\(([^)]*)\)(?:\n```)?'
         for match in re.finditer(code_block_pattern, ai_response):
@@ -91,6 +99,9 @@ class FunctionCallParser:
             # Avoid duplicates
             if (func_name, args_str) not in function_calls:
                 function_calls.append((func_name, args_str))
+                logger.info(f"Found function call: {func_name}({args_str[:100]}...)")
+        
+        logger.info(f"Total function calls found: {len(function_calls)}")
         return function_calls
     
     def _extract_conversation_text(self, ai_response: str, function_calls: List[Tuple[str, str]]) -> str:
