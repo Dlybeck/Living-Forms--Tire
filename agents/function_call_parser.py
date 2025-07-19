@@ -91,15 +91,21 @@ class FunctionCallParser:
             else:
                 logger.warning(f"Found [FUNCTION_CALL] marker but couldn't parse function: {after_marker[:100]}...")
         
-        # 2. Extract function calls from code blocks and plain text
+        # 2. Extract function calls from code blocks and plain text (only valid function names)
+        valid_functions = self.get_available_functions()
         code_block_pattern = r'(?:```[a-zA-Z]*\n)?([a-zA-Z_][a-zA-Z0-9_]*)\s*\(([^)]*)\)(?:\n```)?'
         for match in re.finditer(code_block_pattern, ai_response):
             func_name = match.group(1)
             args_str = match.group(2)
-            # Avoid duplicates
-            if (func_name, args_str) not in function_calls:
-                function_calls.append((func_name, args_str))
-                logger.info(f"Found function call: {func_name}({args_str[:100]}...)")
+            
+            # Only include if it's a valid function name
+            if func_name in valid_functions:
+                # Avoid duplicates
+                if (func_name, args_str) not in function_calls:
+                    function_calls.append((func_name, args_str))
+                    logger.info(f"Found function call: {func_name}({args_str[:100]}...)")
+            else:
+                logger.debug(f"Ignoring invalid function call: {func_name}({args_str[:50]}...)")
         
         logger.info(f"Total function calls found: {len(function_calls)}")
         return function_calls

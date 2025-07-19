@@ -9,7 +9,7 @@ from agents.ai_client import AIClient
 from agents.cost_manager import CostManager, ModelType
 from agents.function_call_parser import FunctionCallParser
 from agents.form_builder import FormBuilder
-from utils.conversation_roadmap import ConversationRoadmap, ConversationStep, DataCategory
+from utils.conversation_enums import ConversationStep, DataCategory
 import logging
 
 logger = logging.getLogger(__name__)
@@ -45,7 +45,7 @@ class BaseAgent(ABC):
     
     async def process_message(self, 
                             user_message: str, 
-                            roadmap: ConversationRoadmap,
+                            roadmap: Dict[str, Any],
                             conversation_context: Dict[str, Any]) -> Dict[str, Any]:
         """
         Process a message using a single thinking model approach:
@@ -54,25 +54,10 @@ class BaseAgent(ABC):
         3. Ensure we always have both conversation and form
         """
         try:
-            # Add conversation event for user message
-            roadmap.add_conversation_event("user_message", {
-                "agent": self.agent_name,
-                "message_length": len(user_message),
-                "has_form_data": bool(conversation_context.get("form_data"))
-            })
-            
             # Use a single model for both conversation and form generation
             response = await self._generate_conversation_and_form(
                 user_message, roadmap, conversation_context
             )
-            
-            # Add conversation event for AI response
-            roadmap.add_conversation_event("ai_response", {
-                "agent": self.agent_name,
-                "response_length": len(response.get("response", "")),
-                "has_form": bool(response.get("form_html")),
-                "model_used": response.get("model_used", "unknown")
-            })
             
             return {
                 "response": response.get("response", ""),
@@ -91,15 +76,15 @@ class BaseAgent(ABC):
     
     async def _generate_conversation_and_form(self, 
                                             user_message: str,
-                                            roadmap: ConversationRoadmap,
+                                            roadmap: Dict[str, Any],
                                             conversation_context: Dict[str, Any]) -> Dict[str, Any]:
         """Generate both conversation and form using a single model"""
         
         # Determine if we need web search
         needs_web_search = self._needs_web_search(user_message, roadmap)
         
-        # Use GPT-4.1 for better responses
-        model = ModelType.GPT_4_1_MINI
+        # Use O4-mini for complex reasoning and detailed form generation
+        model = ModelType.O4_MINI
         
         # Check if we can afford the model
         estimated_cost = self.cost_manager.estimate_cost(
@@ -107,7 +92,7 @@ class BaseAgent(ABC):
             model
         )
         
-        if not self.cost_manager.can_afford_operation("conversation", estimated_cost, roadmap):
+        if not self.cost_manager.can_afford_operation("conversation", estimated_cost, {}):
             # Fallback to smaller model
             model = ModelType.GPT_4O_MINI
             logger.info(f"Using fallback model {model.value} for conversation due to cost constraints")
@@ -116,10 +101,14 @@ class BaseAgent(ABC):
         
         try:
             # Add context about the current goal
-            conversation_context["current_goal"] = roadmap.get_current_goal().description
-            conversation_context["current_step"] = roadmap.current_step.value
+            conversation_context["current_goal"] = "Find the right tires for the user's vehicle"
+            conversation_context["current_step"] = conversation_context.get("current_step", "greeting")
             conversation_context["needs_form"] = True
             conversation_context["form_purpose"] = self._get_form_purpose(roadmap)
+            
+            # Log the context being sent to AI for debugging (only in development)
+            if logger.isEnabledFor(logging.DEBUG):
+                logger.debug(f"Context being sent to AI: {conversation_context}")
             
             # Generate response with function calls
             response = await self.ai_client.generate_response(
@@ -187,12 +176,12 @@ class BaseAgent(ABC):
                 "cost": 0.0
             }
     
-    def _needs_web_search(self, user_message: str, roadmap: ConversationRoadmap) -> bool:
+    def _needs_web_search(self, user_message: str, roadmap: Dict[str, Any]) -> bool:
         """Determine if web search is needed"""
         # Override in subclasses for specific logic
         return False
     
-    def _get_form_purpose(self, roadmap: ConversationRoadmap) -> str:
+    def _get_form_purpose(self, roadmap: Dict[str, Any]) -> str:
         """Get the purpose of form generation for this agent"""
         # Override in subclasses for specific logic
         return "collect_information"
@@ -211,10 +200,7 @@ class BaseAgent(ABC):
             "source": f"{self.agent_name}_error"
         }
     
-    def update_roadmap_data(self, roadmap: ConversationRoadmap, category: DataCategory, data: Any):
+    def update_roadmap_data(self, roadmap: Dict[str, Any], category: DataCategory, data: Any):
         """Update roadmap with new data"""
-        roadmap.update_shared_data(category, data)
-        roadmap.add_conversation_event(
-            "data_updated",
-            {"category": category.value, "agent": self.agent_name, "data": data}
-        ) 
+        # For now, just log the data update
+        logger.info(f"Data update: {category.value} = {data}") 

@@ -10,7 +10,7 @@ from agents.base_agent import BaseAgent
 from agents.ai_client import AIClient
 from agents.cost_manager import CostManager, ModelType
 from agents.form_builder import FormBuilder
-from utils.conversation_roadmap import ConversationRoadmap
+from utils.conversation_enums import ConversationStep, DataCategory
 from prompts.scribe_agent_prompt import SCRIBE_AGENT_PROMPT
 
 logger = logging.getLogger(__name__)
@@ -29,7 +29,7 @@ class ScribeAgent(BaseAgent):
     def get_agent_prompt(self) -> str:
         return "Extract and record any important information from this conversation."
     
-    async def extract_and_record(self, user_message: str, roadmap: ConversationRoadmap, conversation_context: Dict[str, Any]) -> Dict[str, Any]:
+    async def extract_and_record(self, user_message: str, roadmap: Dict[str, Any], conversation_context: Dict[str, Any]) -> Dict[str, Any]:
         """
         Extract important information from the conversation and record it in the notepad
         """
@@ -40,52 +40,29 @@ class ScribeAgent(BaseAgent):
             vehicle_info = self._extract_vehicle_info(user_message)
             if vehicle_info:
                 extracted_info["vehicle_info"] = vehicle_info
-                # Write to notepad in a natural way
-                vehicle_notes = []
-                for key, value in vehicle_info.items():
-                    vehicle_notes.append(f"{key}: {value}")
-                roadmap.write_to_notepad("Vehicle information: " + ", ".join(vehicle_notes), "Vehicle Details")
             
             # Extract tire information
             tire_info = self._extract_tire_info(user_message)
             if tire_info:
                 extracted_info["tire_info"] = tire_info
-                # Write to notepad in a natural way
-                tire_notes = []
-                for key, value in tire_info.items():
-                    tire_notes.append(f"{key}: {value}")
-                roadmap.write_to_notepad("Tire information: " + ", ".join(tire_notes), "Tire Details")
             
             # Extract user preferences
             preferences = self._extract_preferences(user_message)
             if preferences:
                 extracted_info["preferences"] = preferences
-                # Write to notepad in a natural way
-                pref_notes = []
-                for key, value in preferences.items():
-                    pref_notes.append(f"{key}: {value}")
-                roadmap.write_to_notepad("User preferences: " + ", ".join(pref_notes), "User Preferences")
             
             # Extract user situation
             situation = self._extract_situation(user_message)
             if situation:
                 extracted_info["situation"] = situation
-                # Write to notepad in a natural way
-                sit_notes = []
-                for key, value in situation.items():
-                    sit_notes.append(f"{key}: {value}")
-                roadmap.write_to_notepad("User situation: " + ", ".join(sit_notes), "User Situation")
             
             # Extract conversation context and form data
             conversation_insights = self._extract_conversation_insights(user_message, conversation_context)
-            if conversation_insights:
-                for insight in conversation_insights:
-                    roadmap.write_to_notepad(insight, "Conversation Progress")
             
             return {
                 "extracted_info": extracted_info,
                 "notepad_updated": bool(extracted_info or conversation_insights),
-                "notepad_content": roadmap.get_notepad_content()
+                "notepad_content": roadmap.get('ai_notepad', '')
             }
             
         except Exception as e:

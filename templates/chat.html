@@ -809,6 +809,8 @@
                     if (e.target.tagName === 'FORM') {
                         e.preventDefault();
                         console.log('Form submitted via delegation:', e.target);
+                        console.log('Form action:', e.target.action);
+                        console.log('Form method:', e.target.method);
                         this.handleFormSubmission(e.target);
                     }
                 });
@@ -958,6 +960,12 @@
                 // Disable the current form and add new response below
                 this.disableCurrentForm(formObject);
                 
+                // Ensure the form is properly disabled to prevent double submission
+                const submitButton = form.querySelector('button[type="submit"]');
+                if (submitButton) {
+                    submitButton.disabled = true;
+                }
+                
                 this.showLoading();
                 try {
                     console.log('Calling API with form data...');
@@ -1070,10 +1078,13 @@
                         }
                     }
                     
-                    // Remove the submit button
+                    // Disable the submit button instead of removing it
                     const submitButton = currentForm.querySelector('button[type="submit"]');
                     if (submitButton) {
-                        submitButton.remove();
+                        submitButton.disabled = true;
+                        submitButton.style.backgroundColor = '#6c757d';
+                        submitButton.style.cursor = 'not-allowed';
+                        submitButton.textContent = 'Processing...';
                     }
                     
                     // Add a "submitted" indicator only if it doesn't exist
@@ -1147,6 +1158,15 @@
                 
                 // Set up form submission handlers for any new forms
                 this.setupFormHandlers();
+                
+                // Debug: Check if new forms are present
+                const newForms = this.mainFormArea.querySelectorAll('form');
+                console.log('Total forms after adding new form:', newForms.length);
+                newForms.forEach((form, index) => {
+                    console.log(`Form ${index}:`, form);
+                    const submitButton = form.querySelector('button[type="submit"]');
+                    console.log(`Form ${index} submit button:`, submitButton);
+                });
                 
                 // Scroll to the new form
                 this.mainFormArea.scrollTop = this.mainFormArea.scrollHeight;

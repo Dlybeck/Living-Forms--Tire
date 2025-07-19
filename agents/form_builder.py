@@ -139,16 +139,49 @@ class FormBuilder:
             label = name.replace('_', ' ').capitalize()
         if options is None:
             options = []
+        
         options_html = ""
+        has_other_option = False
+        
         for option in options:
-            options_html += f"""
-            <label style="display:flex;align-items:center;margin-bottom:10px;cursor:pointer;">
-                <input type="checkbox" name="{name}" value="{option}" style="margin-right:8px;">
-                <span>{option}</span>
-            </label>
-            """
+            # Check if this is an "Other" option
+            if "other" in option.lower() or "please specify" in option.lower():
+                has_other_option = True
+                options_html += f"""
+                <label style="display:flex;align-items:center;margin-bottom:10px;cursor:pointer;">
+                    <input type="checkbox" name="{name}" value="{option}" style="margin-right:8px;" onchange="toggleOtherField(this, '{name}_other')">
+                    <span>{option}</span>
+                </label>
+                <div id="{name}_other" style="margin-left:20px;margin-bottom:10px;display:none;">
+                    <input type="text" name="{name}_other_text" placeholder="Please describe..." style="width:100%;padding:8px;border:2px solid #e9ecef;border-radius:6px;font-size:14px;font-family: inherit;">
+                </div>
+                """
+            else:
+                options_html += f"""
+                <label style="display:flex;align-items:center;margin-bottom:10px;cursor:pointer;">
+                    <input type="checkbox" name="{name}" value="{option}" style="margin-right:8px;">
+                    <span>{option}</span>
+                </label>
+                """
         
         help_html = f'<small style="color:#6c757d;display:block;margin-top:5px;">{help_text}</small>' if help_text else ""
+        
+        # Add JavaScript for "Other" field toggle if needed
+        js_code = ""
+        if has_other_option:
+            js_code = """
+            <script>
+            function toggleOtherField(checkbox, otherFieldId) {
+                const otherField = document.getElementById(otherFieldId);
+                if (checkbox.checked) {
+                    otherField.style.display = 'block';
+                } else {
+                    otherField.style.display = 'none';
+                    otherField.querySelector('input').value = '';
+                }
+            }
+            </script>
+            """
         
         return f"""
         <div style="margin-bottom:20px;">
@@ -157,6 +190,7 @@ class FormBuilder:
                 {options_html}
             </div>
             {help_html}
+            {js_code}
         </div>
         """
     

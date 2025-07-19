@@ -5,7 +5,7 @@ Handles understanding user's budget constraints and performance priorities
 
 from typing import Dict, Any, Optional
 from agents.base_agent import BaseAgent
-from utils.conversation_roadmap import ConversationRoadmap, ConversationStep, DataCategory
+from utils.conversation_enums import ConversationStep, DataCategory
 import re
 import logging
 
@@ -30,43 +30,89 @@ class PreferencesAgent(BaseAgent):
         from prompts import PREFERENCES_AGENT_PROMPT
         return PREFERENCES_AGENT_PROMPT
     
-    def _needs_web_search(self, user_message: str, roadmap: ConversationRoadmap) -> bool:
-        """Determine if web search is needed for preferences gathering"""
-        
-        # Check if user is asking about specific tire brands or models
-        brand_keywords = ['michelin', 'bridgestone', 'goodyear', 'continental', 'pirelli']
-        if any(keyword in user_message.lower() for keyword in brand_keywords):
-            logger.info("Web search needed: User asking about specific tire brands")
-            return True
-        
-        # Check if user is asking about pricing or costs
-        price_keywords = ['cost', 'price', 'expensive', 'cheap', 'budget', 'affordable']
-        if any(keyword in user_message.lower() for keyword in price_keywords):
-            logger.info("Web search needed: User asking about pricing information")
-            return True
-        
+    def _needs_web_search(self, user_message: str, roadmap: Dict[str, Any]) -> bool:
+        """Determine if web search is needed"""
         return False
     
-    def _get_form_purpose(self, roadmap: ConversationRoadmap) -> str:
+    def _get_form_purpose(self, roadmap: Dict[str, Any]) -> str:
         """Get the purpose of form generation for preferences gathering"""
-        budget_preferences = roadmap.get_shared_data(DataCategory.BUDGET_PREFERENCES)
+        # For now, return a default purpose since we're using simplified session structure
+        return "collect_preferences"
+    
+    async def process_message(self, user_message: str, roadmap: Dict[str, Any], conversation_context: Dict[str, Any]) -> Dict[str, Any]:
+        """Process message with preferences gathering logic"""
         
-        if not budget_preferences:
-            return "collect_basic_preferences"
-        elif not self._has_comprehensive_preferences(budget_preferences):
-            return "collect_detailed_preferences"
-        else:
-            return "preferences_complete"
-    
-    def _has_basic_preferences(self, budget_preferences: Dict[str, Any]) -> bool:
-        """Check if we have basic preferences"""
-        required_fields = ['budget_range', 'performance_priorities']
-        return all(field in budget_preferences for field in required_fields)
-    
-    def _has_comprehensive_preferences(self, budget_preferences: Dict[str, Any]) -> bool:
-        """Check if we have comprehensive preferences"""
-        required_fields = ['budget_range', 'performance_priorities', 'special_considerations', 'brand_preferences']
-        return all(field in budget_preferences for field in required_fields)
+        # Check for form data first
+        form_data = conversation_context.get('form_data', {})
+        if form_data:
+            logger.info(f"Processing preferences form data: {form_data}")
+            
+            # Handle budget range
+            if 'budget_range' in form_data:
+                budget_range = form_data['budget_range']
+                logger.info(f"User provided budget range: {budget_range}")
+                conversation_context['budget_range'] = budget_range
+                conversation_context['budget_provided'] = True
+            
+            # Handle budget category
+            if 'budget_category' in form_data:
+                category = form_data['budget_category']
+                logger.info(f"User budget category: {category}")
+                conversation_context['budget_category'] = category
+                conversation_context['category_provided'] = True
+            
+            # Handle performance priorities
+            if 'performance_priorities' in form_data:
+                priorities = form_data['performance_priorities']
+                logger.info(f"User performance priorities: {priorities}")
+                conversation_context['performance_priorities'] = priorities
+                conversation_context['priorities_provided'] = True
+            
+            # Handle tire type preferences
+            if 'tire_type' in form_data:
+                tire_type = form_data['tire_type']
+                logger.info(f"User tire type preference: {tire_type}")
+                conversation_context['tire_type_preference'] = tire_type
+                conversation_context['tire_type_provided'] = True
+            
+            # Handle brand preferences
+            if 'brand_preferences' in form_data:
+                brands = form_data['brand_preferences']
+                logger.info(f"User brand preferences: {brands}")
+                conversation_context['brand_preferences'] = brands
+                conversation_context['brands_provided'] = True
+            
+            # Handle run-flat preferences
+            if 'run_flat_preference' in form_data:
+                run_flat = form_data['run_flat_preference']
+                logger.info(f"User run-flat preference: {run_flat}")
+                conversation_context['run_flat_preference'] = run_flat
+                conversation_context['run_flat_provided'] = True
+            
+            # Handle special considerations
+            if 'special_considerations' in form_data:
+                considerations = form_data['special_considerations']
+                logger.info(f"User special considerations: {considerations}")
+                conversation_context['special_considerations'] = considerations
+                conversation_context['considerations_provided'] = True
+            
+            # Handle installation preferences
+            if 'installation_preferences' in form_data:
+                installation = form_data['installation_preferences']
+                logger.info(f"User installation preferences: {installation}")
+                conversation_context['installation_preferences'] = installation
+                conversation_context['installation_provided'] = True
+        
+        # Extract preferences if present in message
+        preferences = self._extract_preferences_from_message(user_message)
+        if preferences:
+            logger.info(f"Extracted preferences from message: {preferences}")
+            conversation_context['extracted_preferences'] = preferences
+        
+        # Process with base agent logic
+        response = await super().process_message(user_message, roadmap, conversation_context)
+        
+        return response
     
     def _extract_preferences_from_message(self, user_message: str) -> Optional[Dict[str, Any]]:
         """Extract preferences from user message"""
@@ -116,27 +162,4 @@ class PreferencesAgent(BaseAgent):
         if considerations:
             preferences['special_considerations'] = considerations
         
-        return preferences if preferences else None
-    
-    async def process_message(self, user_message: str, roadmap: ConversationRoadmap, conversation_context: Dict[str, Any]) -> Dict[str, Any]:
-        """Process message with preferences gathering logic"""
-        
-        # Extract preferences if present in message
-        preferences = self._extract_preferences_from_message(user_message)
-        if preferences:
-            # Merge with existing preferences
-            existing_preferences = roadmap.get_shared_data(DataCategory.BUDGET_PREFERENCES) or {}
-            merged_preferences = {**existing_preferences, **preferences}
-            self.update_roadmap_data(roadmap, DataCategory.BUDGET_PREFERENCES, merged_preferences)
-            logger.info(f"Extracted preferences from message: {preferences}")
-        
-        # Process with base agent logic
-        response = await super().process_message(user_message, roadmap, conversation_context)
-        
-        # Check if we can advance to next step
-        if roadmap.has_data_for_category(DataCategory.BUDGET_PREFERENCES):
-            if roadmap.can_advance_to_step(ConversationStep.RECOMMENDATION_GENERATION):
-                roadmap.advance_to_next_step()
-                logger.info("Advanced to recommendation generation step")
-        
-        return response 
+        return preferences if preferences else None 

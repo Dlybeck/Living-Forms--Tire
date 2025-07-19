@@ -5,7 +5,7 @@ Handles the complex task of finding the user's tire size through various methods
 
 from typing import Dict, Any, Optional
 from agents.base_agent import BaseAgent
-from utils.conversation_roadmap import ConversationRoadmap, ConversationStep, DataCategory
+from utils.conversation_enums import ConversationStep, DataCategory
 import re
 import logging
 
@@ -30,14 +30,12 @@ class TireSizeAgent(BaseAgent):
         from prompts import TIRE_SIZE_AGENT_PROMPT
         return TIRE_SIZE_AGENT_PROMPT
     
-    def _needs_web_search(self, user_message: str, roadmap: ConversationRoadmap) -> bool:
+    def _needs_web_search(self, user_message: str, roadmap: Dict[str, Any]) -> bool:
         """Determine if web search is needed for tire size discovery"""
         
         # Check if we have complete vehicle info
-        vehicle_info = roadmap.get_shared_data(DataCategory.VEHICLE_INFO)
-        if vehicle_info and vehicle_info.get('make') and vehicle_info.get('model') and vehicle_info.get('year'):
-            logger.info("Web search needed: Have complete vehicle info for tire size lookup")
-            return True
+        # For now, assume we don't need web search
+        return False
         
         # Check if user mentioned VIN
         if 'vin' in user_message.lower() or 'vehicle identification' in user_message.lower():
@@ -52,17 +50,10 @@ class TireSizeAgent(BaseAgent):
         
         return False
     
-    def _get_form_purpose(self, roadmap: ConversationRoadmap) -> str:
+    def _get_form_purpose(self, roadmap: Dict[str, Any]) -> str:
         """Get the purpose of form generation for tire size discovery"""
-        tire_specs = roadmap.get_shared_data(DataCategory.TIRE_SPECS)
-        vehicle_info = roadmap.get_shared_data(DataCategory.VEHICLE_INFO)
-        
-        if tire_specs and tire_specs.get('current_tire_size'):
-            return "tire_size_found"
-        elif not vehicle_info or not (vehicle_info.get('make') and vehicle_info.get('model')):
-            return "collect_vehicle_info"
-        else:
-            return "tire_size_alternatives"
+        # For now, return a default purpose
+        return "collect_vehicle_info"
     
     def _extract_tire_size_from_message(self, user_message: str) -> Optional[str]:
         """Extract tire size from user message"""
@@ -73,58 +64,80 @@ class TireSizeAgent(BaseAgent):
             return match.group()
         return None
     
-    async def process_message(self, user_message: str, roadmap: ConversationRoadmap, conversation_context: Dict[str, Any]) -> Dict[str, Any]:
+    async def process_message(self, user_message: str, roadmap: Dict[str, Any], conversation_context: Dict[str, Any]) -> Dict[str, Any]:
         """Process message with tire size discovery logic"""
+        
+        # Check for form data first
+        form_data = conversation_context.get('form_data', {})
+        if form_data:
+            logger.info(f"Processing form data: {form_data}")
+            
+            # Handle info_method selection
+            if 'info_method' in form_data:
+                method = form_data['info_method']
+                logger.info(f"User selected method: {method}")
+                
+                # Add method to context for AI
+                conversation_context['user_selected_method'] = method
+                conversation_context['form_submission'] = True
+                
+                # Handle specific method selections
+                if method == 'tire_size':
+                    # User knows their tire size - check if they provided it
+                    if 'tire_size' in form_data and form_data['tire_size']:
+                        logger.info(f"User provided tire size: {form_data['tire_size']}")
+                        conversation_context['provided_tire_size'] = form_data['tire_size']
+                    else:
+                        # User selected tire size method but didn't provide it yet
+                        conversation_context['needs_tire_size'] = True
+                        
+                elif method == 'make_model_year':
+                    # User knows vehicle details - check if they provided them
+                    vehicle_fields = ['vehicle_make', 'vehicle_model', 'vehicle_year']
+                    provided_fields = [field for field in vehicle_fields if field in form_data and form_data[field]]
+                    if provided_fields:
+                        logger.info(f"User provided vehicle info: {provided_fields}")
+                        conversation_context['provided_vehicle_info'] = {field: form_data[field] for field in provided_fields if field in form_data}
+                    else:
+                        # User selected vehicle method but didn't provide details yet
+                        conversation_context['needs_vehicle_info'] = True
+                        
+                elif method == 'vin':
+                    # User has VIN - check if they provided it
+                    if 'vehicle_vin' in form_data and form_data['vehicle_vin']:
+                        logger.info(f"User provided VIN: {form_data['vehicle_vin']}")
+                        conversation_context['provided_vin'] = form_data['vehicle_vin']
+                    else:
+                        # User selected VIN method but didn't provide it yet
+                        conversation_context['needs_vin'] = True
+                        
+                elif method == 'not_sure':
+                    # User needs help - guide them through the process
+                    logger.info("User needs help figuring out vehicle information")
+                    conversation_context['needs_guidance'] = True
+                    conversation_context['help_requested'] = True
+                    
+            # Handle proximity response (for not_sure flow)
+            if 'near_vehicle' in form_data:
+                proximity = form_data['near_vehicle']
+                logger.info(f"User proximity response: {proximity}")
+                conversation_context['user_proximity'] = proximity
+                conversation_context['proximity_answered'] = True
+        
         # Extract tire size if present in message
         tire_size = self._extract_tire_size_from_message(user_message)
         if tire_size:
-            self.update_roadmap_data(roadmap, DataCategory.TIRE_SPECS, {
-                'current_tire_size': tire_size,
-                'source': 'user_input'
-            })
             logger.info(f"Extracted tire size from message: {tire_size}")
+            conversation_context['extracted_tire_size'] = tire_size
         
         # Extract vehicle info if present
         vehicle_info = self._extract_vehicle_info(user_message)
         if vehicle_info:
-            self.update_roadmap_data(roadmap, DataCategory.VEHICLE_INFO, vehicle_info)
             logger.info(f"Extracted vehicle info: {vehicle_info}")
-        
-        # If the user has answered the initial info_method question, advance the roadmap
-        info_method = roadmap.get_shared_data(DataCategory.VEHICLE_INFO)
-        if info_method and info_method.get('method') in ['direct_input', 'vin', 'make_model_year', 'need_help']:
-            if roadmap.current_step == ConversationStep.GREETING:
-                roadmap.advance_to_next_step()
-                logger.info("Advanced from greeting to tire size discovery step after info_method submission")
-                # Add conversation event for step advancement
-                roadmap.add_conversation_event("step_advanced", {
-                    "from_step": "greeting",
-                    "to_step": "tire_size_discovery",
-                    "trigger": "info_method_selected",
-                    "method": info_method.get('method')
-                })
-        
-        # Add user's chosen method to context for AI to use
-        if conversation_context.get('user_method'):
-            logger.info(f"User chose method: {conversation_context['user_method']}")
-            # Add this to the context that gets passed to the AI
-            conversation_context['user_selected_method'] = conversation_context['user_method']
-            conversation_context['form_submission'] = True
-            
-            # Add conversation event for method selection
-            roadmap.add_conversation_event("method_selected", {
-                "method": conversation_context['user_method'],
-                "agent": self.agent_name
-            })
+            conversation_context['extracted_vehicle_info'] = vehicle_info
         
         # Process with base agent logic
         response = await super().process_message(user_message, roadmap, conversation_context)
-        
-        # Check if we can advance to next step
-        if roadmap.has_data_for_category(DataCategory.TIRE_SPECS):
-            if roadmap.can_advance_to_step(ConversationStep.DRIVING_INFO_COLLECTION):
-                roadmap.advance_to_next_step()
-                logger.info("Advanced to driving info collection step")
         
         return response
     

@@ -13,12 +13,10 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Import our modules
-from agents.agent_coordinator import AgentCoordinator
-from agents.scribe_agent import ScribeAgent
+from agents.improved_agent_coordinator import ImprovedAgentCoordinator
 from agents.ai_client import AIClient
 from agents.cost_manager import CostManager, ModelType
 from agents.form_builder import FormBuilder
-from utils.conversation_roadmap import ConversationRoadmap, DataCategory
 from database.tire_database import TireDatabase
 
 app = FastAPI(title="Living Form Tire Sales Agent", version="1.0.0")
@@ -32,11 +30,7 @@ tire_db = TireDatabase()
 cost_manager = CostManager(config={"conversation_budget": 0.20})
 ai_client = AIClient()
 form_builder = FormBuilder()
-agent_coordinator = AgentCoordinator(ai_client, cost_manager, form_builder, tire_db)
-scribe_agent = ScribeAgent(ai_client, cost_manager, form_builder)
-
-# In-memory session storage (replace with Redis/DB in production)
-active_sessions: Dict[str, ConversationRoadmap] = {}
+agent_coordinator = ImprovedAgentCoordinator(ai_client, cost_manager, form_builder, tire_db)
 
 # Request/Response models
 class ChatMessage(BaseModel):
@@ -62,95 +56,26 @@ async def get_chat_interface(request: Request):
 async def chat_endpoint(chat_request: ChatMessage):
     """Main chat endpoint for the living form conversation"""
     try:
-        # Get or create conversation roadmap
-        if chat_request.session_id not in active_sessions:
-            active_sessions[chat_request.session_id] = ConversationRoadmap()
+        logger.info(f"Processing chat request for session: {chat_request.session_id}")
         
-        roadmap = active_sessions[chat_request.session_id]
-        
-        # Build conversation context
-        conversation_context: Dict[str, Any] = {"session_id": chat_request.session_id}
-        
-        # Add full conversation history to context
-        if roadmap.conversation_history:
-            conversation_context["conversation_history"] = roadmap.conversation_history
-            logger.info(f"Added {len(roadmap.conversation_history)} conversation events to context")
-        
-        # Add current conversation summary
-        conversation_context["conversation_summary"] = roadmap.get_conversation_summary()
-        
-        # Update form data if provided
-        if chat_request.form_data:
-            logger.info(f"Received form data: {chat_request.form_data}")
-            
-            # Add form submission to conversation history
-            roadmap.add_conversation_event("form_submission", {
-                "form_data": chat_request.form_data,
-                "message": chat_request.message
-            })
-            
-            # Process form data and update roadmap
-            for key, value in chat_request.form_data.items():
-                if key == "info_method":
-                    logger.info(f"Processing info_method: {value}")
-                    if value == "tire_size":
-                        roadmap.update_shared_data(DataCategory.TIRE_SPECS, {"method": "direct_input"})
-                        conversation_context["user_method"] = "tire_size"
-                    elif value == "vin":
-                        roadmap.update_shared_data(DataCategory.VEHICLE_INFO, {"method": "vin"})
-                        conversation_context["user_method"] = "vin"
-                    elif value == "make_model_year":
-                        roadmap.update_shared_data(DataCategory.VEHICLE_INFO, {"method": "make_model_year"})
-                        conversation_context["user_method"] = "make_model_year"
-                    elif value == "not_sure":
-                        roadmap.update_shared_data(DataCategory.VEHICLE_INFO, {"method": "need_help"})
-                        conversation_context["user_method"] = "not_sure"
-                else:
-                    # Store other form fields in shared data for context
-                    roadmap.update_shared_data(DataCategory.VEHICLE_INFO, {key: value})
-                    conversation_context[f"form_field_{key}"] = value
-        
-        # Add any existing info method to context
-        info_method = roadmap.get_shared_data(DataCategory.VEHICLE_INFO)
-        if info_method and info_method.get('method'):
-            conversation_context['info_method'] = info_method['method']
-        
-        # Add notepad summary to context
-        conversation_context['notepad_summary'] = roadmap.get_notepad_summary()
-        
-        logger.info(f"Final conversation context: {conversation_context}")
-        logger.info(f"User message: {chat_request.message}")
-        
-        # Use Scribe AI to extract and record important information
-        scribe_result = await scribe_agent.extract_and_record(
-            user_message=chat_request.message,
-            roadmap=roadmap,
-            conversation_context=conversation_context
-        )
-        
-        if scribe_result.get("notepad_updated"):
-            logger.info(f"Scribe AI updated notepad with: {scribe_result.get('extracted_info')}")
-            # Update notepad summary in context after Scribe AI processing
-            conversation_context['notepad_summary'] = roadmap.get_notepad_summary()
-        
-        # Process message through agent coordinator
+        # Process message through improved agent coordinator
         response_data = await agent_coordinator.process_message(
             user_message=chat_request.message,
-            roadmap=roadmap,
-            conversation_context=conversation_context
+            session_id=chat_request.session_id,
+            form_data=chat_request.form_data
         )
         
-        # Update session storage
-        active_sessions[chat_request.session_id] = roadmap
+        # Get session info for response
+        session_info = await agent_coordinator.get_session_info(chat_request.session_id)
         
         return ChatResponse(
             response=response_data.get("response") or "",
-            form_html=response_data.get("form_html"),  # Return the form HTML from agent
+            form_html=response_data.get("form_html"),
             inline_guidance=response_data.get("inline_guidance"),
-            conversation_state=roadmap.current_step.value,
+            conversation_state=response_data.get("coordinator_info", {}).get("current_step", "unknown"),
             cost_info=response_data.get("cost_info", {"total_cost": 0.0}),
             session_id=chat_request.session_id,
-            notepad_content=roadmap.get_notepad_content() # Add notepad content to response
+            notepad_content=session_info.get("notepad_content", "")
         )
         
     except Exception as e:
@@ -160,43 +85,45 @@ async def chat_endpoint(chat_request: ChatMessage):
 @app.get("/session/{session_id}/notepad")
 async def get_session_notepad(session_id: str):
     """Get the Scribe AI notepad content for a session"""
-    if session_id not in active_sessions:
-        raise HTTPException(status_code=404, detail="Session not found")
+    session_info = await agent_coordinator.get_session_info(session_id)
     
-    roadmap = active_sessions[session_id]
-    notepad_content = roadmap.get_notepad_content()
+    if "error" in session_info:
+        raise HTTPException(status_code=404, detail="Session not found")
     
     return {
         "session_id": session_id,
-        "notepad_content": notepad_content,
-        "notepad_raw": roadmap.ai_notepad,
-        "conversation_length": len(roadmap.conversation_history),
+        "notepad_content": session_info.get("notepad_content", ""),
+        "conversation_length": session_info.get("conversation_length", 0),
         "last_updated": datetime.now().isoformat()
     }
 
 @app.get("/session/{session_id}/cost")
 async def get_session_costs(session_id: str):
     """Get cost breakdown for a session"""
-    if session_id not in active_sessions:
+    session_info = await agent_coordinator.get_session_info(session_id)
+    
+    if "error" in session_info:
         raise HTTPException(status_code=404, detail="Session not found")
     
-    roadmap = active_sessions[session_id]
-    cost_summary = cost_manager.get_cost_summary(roadmap)
+    # Get cost summary from cost manager
+    cost_summary = cost_manager.get_cost_summary(session_info)
     
     return {
-        "total_cost": cost_summary["total_cost"],
-        "interactions": cost_summary["interactions_count"],
-        "cost_breakdown": cost_summary["cost_breakdown"],
-        "budget_remaining": cost_summary["budget_remaining"]
+        "total_cost": cost_summary.get("total_cost", 0.0),
+        "interactions": cost_summary.get("interactions_count", 0),
+        "cost_breakdown": cost_summary.get("cost_breakdown", {}),
+        "budget_remaining": cost_summary.get("budget_remaining", 0.0)
     }
 
 @app.get("/health")
 async def health_check():
     """Health check endpoint"""
+    system_status = await agent_coordinator.get_system_status()
     return {
         "status": "healthy",
         "timestamp": datetime.now().isoformat(),
-        "active_sessions": len(active_sessions)
+        "active_sessions": system_status.get("active_sessions", 0),
+        "system_health": system_status.get("system_health", "unknown")
     }
 
 @app.get("/test-ai")
@@ -204,14 +131,14 @@ async def test_ai_endpoint():
     """Test AI endpoints to check if they're working"""
     test_results = {}
     
-    # Test OpenAI GPT-4o-mini (primary model)
+    # Test OpenAI O4-mini (primary model)
     try:
         response = await ai_client.generate_response(
             user_message="Hello, this is a test message.",
             conversation_context={"current_step": "test"},
-            model_type=ModelType.GPT_4O_MINI
+            model_type=ModelType.O4_MINI
         )
-        test_results["openai_gpt_4o_mini"] = {
+        test_results["openai_o4_mini"] = {
             "status": "success",
             "model": response.get("model", "unknown"),
             "cost": response.get("cost", 0.0)
