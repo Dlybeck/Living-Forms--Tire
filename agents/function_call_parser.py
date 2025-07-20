@@ -71,6 +71,7 @@ class FunctionCallParser:
         Handles:
         - [FUNCTION_CALL] function_name(...)
         - function_name(...) in code blocks or plain text
+        - function_name param1="value" param2="value" (without parentheses)
         """
         import re
         function_calls = []
@@ -78,7 +79,7 @@ class FunctionCallParser:
         # Debug logging
         logger.info(f"Extracting function calls from AI response: {ai_response[:500]}...")
         
-        # 1. Extract [FUNCTION_CALL] markers
+        # 1. Extract [FUNCTION_CALL] markers (with parentheses)
         call_markers = list(re.finditer(r'\[FUNCTION_CALL\]', ai_response, re.IGNORECASE))
         for marker in call_markers:
             after_marker = ai_response[marker.end():].strip()
@@ -91,7 +92,7 @@ class FunctionCallParser:
             else:
                 logger.warning(f"Found [FUNCTION_CALL] marker but couldn't parse function: {after_marker[:100]}...")
         
-        # 2. Extract function calls from code blocks and plain text (only valid function names)
+        # 2. Extract function calls with parentheses from code blocks and plain text
         valid_functions = self.get_available_functions()
         code_block_pattern = r'(?:```[a-zA-Z]*\n)?([a-zA-Z_][a-zA-Z0-9_]*)\s*\(([^)]*)\)(?:\n```)?'
         for match in re.finditer(code_block_pattern, ai_response):
@@ -103,9 +104,25 @@ class FunctionCallParser:
                 # Avoid duplicates
                 if (func_name, args_str) not in function_calls:
                     function_calls.append((func_name, args_str))
-                    logger.info(f"Found function call: {func_name}({args_str[:100]}...)")
+                    logger.info(f"Found function call with parentheses: {func_name}({args_str[:100]}...)")
             else:
                 logger.debug(f"Ignoring invalid function call: {func_name}({args_str[:50]}...)")
+        
+        # 3. Extract function calls WITHOUT parentheses (new flexible format)
+        # Look for patterns like: [function_name param1="value" param2="value"]
+        bracket_pattern = r'\[([a-zA-Z_][a-zA-Z0-9_]*)\s+([^\]]+)\]'
+        for match in re.finditer(bracket_pattern, ai_response):
+            func_name = match.group(1)
+            args_str = match.group(2)
+            
+            # Only include if it's a valid function name
+            if func_name in valid_functions:
+                # Avoid duplicates
+                if (func_name, args_str) not in function_calls:
+                    function_calls.append((func_name, args_str))
+                    logger.info(f"Found function call without parentheses: {func_name} {args_str[:100]}...")
+            else:
+                logger.debug(f"Ignoring invalid function call: {func_name} {args_str[:50]}...")
         
         logger.info(f"Total function calls found: {len(function_calls)}")
         return function_calls
@@ -117,9 +134,19 @@ class FunctionCallParser:
         if not function_calls:
             return ai_response.strip()
         
-        # Find the position of the first function call
-        first_call_pattern = r'\[FUNCTION_CALL\]'
-        first_match = re.search(first_call_pattern, ai_response, re.IGNORECASE)
+        # Find the position of the first function call (any format)
+        # Look for [FUNCTION_CALL], [function_name(...)], or [function_name ...]
+        first_call_patterns = [
+            r'\[FUNCTION_CALL\]',  # [FUNCTION_CALL] format
+            r'\[[a-zA-Z_][a-zA-Z0-9_]*\s*\([^)]*\)\]',  # [function_name(...)] format
+            r'\[[a-zA-Z_][a-zA-Z0-9_]*\s+[^\]]+\]'  # [function_name ...] format
+        ]
+        
+        first_match = None
+        for pattern in first_call_patterns:
+            match = re.search(pattern, ai_response, re.IGNORECASE)
+            if match and (first_match is None or match.start() < first_match.start()):
+                first_match = match
         
         if first_match:
             # Extract text before the first function call
@@ -181,5 +208,13 @@ create_budget_range_field(name, label, required=False, help_text=None)
 create_mileage_range_field(name, label, required=False, help_text=None)
 - Creates a mileage range field with min/max inputs
 
-Usage format: [FUNCTION_CALL] function_name(name="value", label="Label", required=True)
+Usage formats:
+- [FUNCTION_CALL] function_name(name="value", label="Label", required=True)
+- [function_name(name="value", label="Label", required=True)]
+- [function_name name="value" label="Label" required=True]
+
+IMPORTANT: For radio fields, checkbox fields, and select fields, you MUST always include the options parameter:
+- create_radio_field(name="choice", label="Make a choice", options=["Option 1", "Option 2", "Option 3"], required=True)
+- create_checkbox_field(name="selections", label="Select all that apply", options=["Choice A", "Choice B", "Choice C"], required=False)
+- create_select_field(name="dropdown", label="Choose an option", options=["First", "Second", "Third"], required=True)
 """ 

@@ -117,12 +117,15 @@ class TireSizeAgent(BaseAgent):
                     conversation_context['needs_guidance'] = True
                     conversation_context['help_requested'] = True
                     
-            # Handle proximity response (for not_sure flow)
-            if 'near_vehicle' in form_data:
-                proximity = form_data['near_vehicle']
-                logger.info(f"User proximity response: {proximity}")
-                conversation_context['user_proximity'] = proximity
-                conversation_context['proximity_answered'] = True
+            # Handle proximity response (for not_sure flow) - check multiple possible field names
+            proximity_fields = ['near_vehicle', 'near_vehicle_now', 'proximity', 'vehicle_proximity', 'near_car']
+            for field in proximity_fields:
+                if field in form_data:
+                    proximity = form_data[field]
+                    logger.info(f"User proximity response from field '{field}': {proximity}")
+                    conversation_context['user_proximity'] = proximity
+                    conversation_context['proximity_answered'] = True
+                    break
         
         # Extract tire size if present in message
         tire_size = self._extract_tire_size_from_message(user_message)
