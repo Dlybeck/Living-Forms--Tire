@@ -47,64 +47,11 @@ class DrivingInfoAgent(BaseAgent):
         if form_data:
             logger.info(f"Processing driving info form data: {form_data}")
             
-            # Handle location/region data
-            if 'user_location' in form_data:
-                location = form_data['user_location']
-                logger.info(f"User provided location: {location}")
-                conversation_context['user_location'] = location
-                conversation_context['location_provided'] = True
-            
-            # Handle mileage data
-            if 'total_mileage' in form_data:
-                total_mileage = form_data['total_mileage']
-                logger.info(f"User provided total mileage: {total_mileage}")
-                conversation_context['total_mileage'] = total_mileage
-                conversation_context['mileage_provided'] = True
-                
-                # Calculate annual mileage if we have model year
-                if 'vehicle_year' in conversation_context.get('important_data', {}):
-                    vehicle_year = conversation_context['important_data']['vehicle_year']
-                    current_year = 2024  # Could be made dynamic
-                    years_owned = current_year - int(vehicle_year) + 1
-                    if years_owned > 0:
-                        annual_mileage = int(total_mileage) / years_owned
-                        conversation_context['calculated_annual_mileage'] = round(annual_mileage)
-                        logger.info(f"Calculated annual mileage: {annual_mileage}")
-            
-            # Handle driving environment
-            if 'driving_environment' in form_data:
-                environment = form_data['driving_environment']
-                logger.info(f"User driving environment: {environment}")
-                conversation_context['driving_environment'] = environment
-                conversation_context['environment_provided'] = True
-            
-            # Handle weather conditions
-            if 'weather_conditions' in form_data:
-                weather = form_data['weather_conditions']
-                logger.info(f"User weather conditions: {weather}")
-                conversation_context['weather_conditions'] = weather
-                conversation_context['weather_provided'] = True
-            
-            # Handle driving style
-            if 'driving_style' in form_data:
-                style = form_data['driving_style']
-                logger.info(f"User driving style: {style}")
-                conversation_context['driving_style'] = style
-                conversation_context['style_provided'] = True
-            
-            # Handle vehicle usage
-            if 'vehicle_usage' in form_data:
-                usage = form_data['vehicle_usage']
-                logger.info(f"User vehicle usage: {usage}")
-                conversation_context['vehicle_usage'] = usage
-                conversation_context['usage_provided'] = True
-            
-            # Handle ownership plans
-            if 'ownership_plans' in form_data:
-                plans = form_data['ownership_plans']
-                logger.info(f"User ownership plans: {plans}")
-                conversation_context['ownership_plans'] = plans
-                conversation_context['plans_provided'] = True
+            # Let ScribeAgent handle the information extraction and recording
+            # We just log what was provided for debugging
+            for field, value in form_data.items():
+                if value and str(value).lower() not in ['false', 'none', '']:
+                    logger.info(f"User provided {field}: {value}")
         
         # Extract driving info if present in message
         driving_info = self._extract_driving_info_from_message(user_message)

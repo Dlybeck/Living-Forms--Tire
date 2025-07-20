@@ -72,70 +72,11 @@ class TireSizeAgent(BaseAgent):
         if form_data:
             logger.info(f"Processing form data: {form_data}")
             
-            # Handle info_method selection
-            if 'info_method' in form_data:
-                method = form_data['info_method']
-                logger.info(f"User selected method: {method}")
-                
-                # Add method to context for AI
-                conversation_context['user_selected_method'] = method
-                conversation_context['form_submission'] = True
-                
-                # Enhanced context for initial form
-                if form_data.get('_context', {}).get('is_initial_form'):
-                    context = form_data['_context']
-                    logger.info(f"Initial form context: {context}")
-                    conversation_context['initial_form_context'] = {
-                        'selected_label': context['selected_label'],
-                        'selected_description': context['selected_description'],
-                        'user_context': context['user_context']
-                    }
-                
-                # Handle specific method selections
-                if method == 'tire_size':
-                    # User knows their tire size - check if they provided it
-                    if 'tire_size' in form_data and form_data['tire_size']:
-                        logger.info(f"User provided tire size: {form_data['tire_size']}")
-                        conversation_context['provided_tire_size'] = form_data['tire_size']
-                    else:
-                        # User selected tire size method but didn't provide it yet
-                        conversation_context['needs_tire_size'] = True
-                        
-                elif method == 'make_model_year':
-                    # User knows vehicle details - check if they provided them
-                    vehicle_fields = ['vehicle_make', 'vehicle_model', 'vehicle_year']
-                    provided_fields = [field for field in vehicle_fields if field in form_data and form_data[field]]
-                    if provided_fields:
-                        logger.info(f"User provided vehicle info: {provided_fields}")
-                        conversation_context['provided_vehicle_info'] = {field: form_data[field] for field in provided_fields if field in form_data}
-                    else:
-                        # User selected vehicle method but didn't provide details yet
-                        conversation_context['needs_vehicle_info'] = True
-                        
-                elif method == 'vin':
-                    # User has VIN - check if they provided it
-                    if 'vehicle_vin' in form_data and form_data['vehicle_vin']:
-                        logger.info(f"User provided VIN: {form_data['vehicle_vin']}")
-                        conversation_context['provided_vin'] = form_data['vehicle_vin']
-                    else:
-                        # User selected VIN method but didn't provide it yet
-                        conversation_context['needs_vin'] = True
-                        
-                elif method == 'not_sure':
-                    # User needs help - guide them through the process
-                    logger.info("User needs help figuring out vehicle information")
-                    conversation_context['needs_guidance'] = True
-                    conversation_context['help_requested'] = True
-                    
-            # Handle proximity response (for not_sure flow) - check multiple possible field names
-            proximity_fields = ['near_vehicle', 'near_vehicle_now', 'proximity', 'vehicle_proximity', 'near_car']
-            for field in proximity_fields:
-                if field in form_data:
-                    proximity = form_data[field]
-                    logger.info(f"User proximity response from field '{field}': {proximity}")
-                    conversation_context['user_proximity'] = proximity
-                    conversation_context['proximity_answered'] = True
-                    break
+            # Let ScribeAgent handle the information extraction and recording
+            # We just log what was provided for debugging
+            for field, value in form_data.items():
+                if value and str(value).lower() not in ['false', 'none', '']:
+                    logger.info(f"User provided {field}: {value}")
         
         # Extract tire size if present in message
         tire_size = self._extract_tire_size_from_message(user_message)

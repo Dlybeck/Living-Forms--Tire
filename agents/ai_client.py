@@ -128,7 +128,7 @@ class AIClient:
         return prompt
     
     def _format_conversation_context(self, conversation_context: Dict[str, Any]) -> str:
-        """Format conversation context for the AI"""
+        """Format conversation context for the AI - Simplified to rely on ScribeAgent's notepad"""
         context_parts = []
         
         # Debug logging
@@ -146,168 +146,17 @@ class AIClient:
         if 'form_purpose' in conversation_context:
             context_parts.append(f"Form Purpose: {conversation_context['form_purpose']}")
         
-        # Add user selected method if available (CRITICAL for initial form handling)
-        if 'user_selected_method' in conversation_context:
-            method = conversation_context['user_selected_method']
-            context_parts.append(f"User Selected Method: {method}")
-            context_parts.append("Form Submission: True")
-            
-            # Add rich initial form context if available
-            if 'initial_form_context' in conversation_context:
-                init_context = conversation_context['initial_form_context']
-                context_parts.append(f"User's exact selection: {init_context['selected_label']}")
-                context_parts.append(f"User's description: {init_context['selected_description']}")
-                context_parts.append(f"User's context: {init_context['user_context']}")
-            
-            # Add specific context based on method
-            if method == 'not_sure':
-                context_parts.append("User needs help figuring out vehicle information")
-                context_parts.append("Guidance required: User is unsure how to find tire/vehicle info")
-        
-        # Check if proximity has been answered (regardless of method)
-        if conversation_context.get('proximity_answered'):
-            proximity = conversation_context.get('user_proximity', 'unknown')
-            context_parts.append(f"User has answered proximity question: {proximity}")
-            if proximity == 'yes':
-                context_parts.append("User is near their vehicle - should ask where to check")
-            elif proximity == 'no':
-                context_parts.append("User is not near their vehicle - should ask about documents")
-        
-        # Add method-specific context if method is available
-        if 'user_selected_method' in conversation_context:
-            method = conversation_context['user_selected_method']
-            if method == 'tire_size':
-                if conversation_context.get('provided_tire_size'):
-                    context_parts.append(f"User provided tire size: {conversation_context['provided_tire_size']}")
-                else:
-                    context_parts.append("User selected tire size method but needs to provide the size")
-            elif method == 'make_model_year':
-                if conversation_context.get('provided_vehicle_info'):
-                    context_parts.append(f"User provided vehicle info: {conversation_context['provided_vehicle_info']}")
-                else:
-                    context_parts.append("User selected vehicle method but needs to provide details")
-            elif method == 'vin':
-                if conversation_context.get('provided_vin'):
-                    context_parts.append(f"User provided VIN: {conversation_context['provided_vin']}")
-                else:
-                    context_parts.append("User selected VIN method but needs to provide the VIN")
-        
-        # Add driving info context
-        if conversation_context.get('location_provided'):
-            context_parts.append(f"User location: {conversation_context.get('user_location', 'unknown')}")
-        if conversation_context.get('mileage_provided'):
-            context_parts.append(f"Total mileage: {conversation_context.get('total_mileage', 'unknown')}")
-            if conversation_context.get('calculated_annual_mileage'):
-                context_parts.append(f"Calculated annual mileage: {conversation_context['calculated_annual_mileage']}")
-        if conversation_context.get('environment_provided'):
-            context_parts.append(f"Driving environment: {conversation_context.get('driving_environment', 'unknown')}")
-        if conversation_context.get('weather_provided'):
-            context_parts.append(f"Weather conditions: {conversation_context.get('weather_conditions', 'unknown')}")
-        if conversation_context.get('style_provided'):
-            context_parts.append(f"Driving style: {conversation_context.get('driving_style', 'unknown')}")
-        if conversation_context.get('usage_provided'):
-            context_parts.append(f"Vehicle usage: {conversation_context.get('vehicle_usage', 'unknown')}")
-        if conversation_context.get('plans_provided'):
-            context_parts.append(f"Ownership plans: {conversation_context.get('ownership_plans', 'unknown')}")
-        
-        # Add preferences context
-        if conversation_context.get('budget_provided'):
-            context_parts.append(f"Budget range: {conversation_context.get('budget_range', 'unknown')}")
-        if conversation_context.get('category_provided'):
-            context_parts.append(f"Budget category: {conversation_context.get('budget_category', 'unknown')}")
-        if conversation_context.get('priorities_provided'):
-            context_parts.append(f"Performance priorities: {conversation_context.get('performance_priorities', 'unknown')}")
-        if conversation_context.get('tire_type_provided'):
-            context_parts.append(f"Tire type preference: {conversation_context.get('tire_type_preference', 'unknown')}")
-        if conversation_context.get('brands_provided'):
-            context_parts.append(f"Brand preferences: {conversation_context.get('brand_preferences', 'unknown')}")
-        if conversation_context.get('run_flat_provided'):
-            context_parts.append(f"Run-flat preference: {conversation_context.get('run_flat_preference', 'unknown')}")
-        if conversation_context.get('considerations_provided'):
-            context_parts.append(f"Special considerations: {conversation_context.get('special_considerations', 'unknown')}")
-        if conversation_context.get('installation_provided'):
-            context_parts.append(f"Installation preferences: {conversation_context.get('installation_preferences', 'unknown')}")
-        
-        if 'form_submission' in conversation_context:
-            context_parts.append("Form Submission: True")
-        
-        # Add conversation history if available
-        if 'conversation_history' in conversation_context and conversation_context['conversation_history']:
-            history = conversation_context['conversation_history']
-            context_parts.append("Conversation History:")
-            
-            # Look for key events in recent history
-            recent_events = history[-10:]  # Include last 10 events to avoid token limits
-            
-            # Check for method selection
-            method_selected = None
-            for event in recent_events:
-                if event.get('type') == 'method_selected':
-                    method_selected = event.get('data', {}).get('method')
-                    break
-                elif event.get('type') == 'form_submission':
-                    form_data = event.get('form_data', {})
-                    if 'info_method' in form_data:
-                        method_selected = form_data['info_method']
-                        break
-            
-            if method_selected:
-                context_parts.append(f"  - User selected method: {method_selected}")
-                
-                # Add context based on method
-                if method_selected == 'not_sure':
-                    context_parts.append("  - User needs help finding vehicle information")
-                    
-                    # Check if they've already answered proximity question
-                    for event in recent_events:
-                        if event.get('type') == 'form_submission':
-                            form_data = event.get('form_data', {})
-                            # Check for both possible field names
-                            if 'proximity' in form_data:
-                                proximity = form_data['proximity']
-                                context_parts.append(f"  - User is {proximity} their vehicle")
-                                break
-                            elif 'near_vehicle' in form_data:
-                                proximity = form_data['near_vehicle']
-                                context_parts.append(f"  - User is {proximity} their vehicle")
-                                break
-            
-            # Show recent form submissions
-            for event in recent_events:
-                event_type = event.get('type', 'unknown')
-                timestamp = event.get('timestamp', 'unknown')
-                
-                if event_type == 'form_submission':
-                    form_data = event.get('form_data', {})
-                    if form_data:
-                        # Show what the user answered in the form
-                        answers = []
-                        for field, value in form_data.items():
-                            if field not in ['additional_notes', 'info_method']:  # Skip auto-added fields
-                                answers.append(f"{field}: {value}")
-                        if answers:
-                            context_parts.append(f"  - {timestamp}: User answered: {', '.join(answers)}")
-                            
-                        # Special handling for proximity answers
-                        if 'near_vehicle' in form_data:
-                            proximity = form_data['near_vehicle']
-                            context_parts.append(f"  - User proximity answer: {proximity}")
-                elif event_type == 'user_message':
-                    message = event.get('message', '')
-                    if message and len(message) < 100:  # Only show short messages
-                        context_parts.append(f"  - {timestamp}: User said: {message}")
-        
-        # Add conversation summary if available
-        if 'conversation_summary' in conversation_context:
-            summary = conversation_context['conversation_summary']
-            if isinstance(summary, str):
-                context_parts.append(f"Conversation Summary: {summary}")
-            elif isinstance(summary, dict):
-                context_parts.append(f"Conversation Summary: {summary.get('current_goal', 'Unknown goal')}")
-                if summary.get('completed_goals'):
-                    context_parts.append(f"Completed Steps: {', '.join(summary['completed_goals'])}")
-                if summary.get('missing_data'):
-                    context_parts.append(f"Missing Data: {', '.join(summary['missing_data'])}")
+        # Add form data if present (for immediate context)
+        if 'form_data' in conversation_context:
+            form_data = conversation_context['form_data']
+            if form_data:
+                # Show what the user answered in the form
+                answers = []
+                for field, value in form_data.items():
+                    if field not in ['additional_notes', 'info_method']:  # Skip auto-added fields
+                        answers.append(f"{field}: {value}")
+                if answers:
+                    context_parts.append(f"Form Data: {', '.join(answers)}")
         
         # Add notepad information if available (prefer enhanced Control Headquarters scene)
         if 'enhanced_notepad' in conversation_context:
