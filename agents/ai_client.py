@@ -309,8 +309,10 @@ class AIClient:
                 if summary.get('missing_data'):
                     context_parts.append(f"Missing Data: {', '.join(summary['missing_data'])}")
         
-        # Add notepad information if available
-        if 'notepad_summary' in conversation_context:
+        # Add notepad information if available (prefer enhanced Control Headquarters scene)
+        if 'enhanced_notepad' in conversation_context:
+            context_parts.append(f"AI Notepad (Control Headquarters):\n{conversation_context['enhanced_notepad']}")
+        elif 'notepad_summary' in conversation_context:
             context_parts.append(f"AI Notepad:\n{conversation_context['notepad_summary']}")
         
         formatted_context = "Context:\n" + "\n".join(f"- {part}" for part in context_parts) if context_parts else ""

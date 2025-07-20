@@ -149,8 +149,11 @@ class ImprovedAgentCoordinator:
                 'state_summary': await self.state_manager.get_state_summary()
             }
             
-            # Add notepad content to response
-            response['notepad_content'] = session.get('ai_notepad', '')
+            # Add notepad content to response (use enhanced Control Headquarters scene if available)
+            if 'enhanced_notepad' in response:
+                response['notepad_content'] = response['enhanced_notepad']
+            else:
+                response['notepad_content'] = session.get('ai_notepad', '')
             
             return response
             

@@ -64,6 +64,7 @@ class BaseAgent(ABC):
                 "conversation_text": response.get("conversation_text", ""),
                 "form_html": response.get("form_html", ""),
                 "inline_guidance": response.get("inline_guidance", None),
+                "enhanced_notepad": conversation_context.get("enhanced_notepad", ""),
                 "cost_info": {
                     "total_cost": response.get("cost", 0.0),
                     "model_used": response.get("model_used", "unknown")
@@ -100,6 +101,10 @@ class BaseAgent(ABC):
             logger.info(f"Using GPT-4.1 for conversation")
         
         try:
+            # Transform basic ScribeAgent output into rich Control Headquarters scene
+            enhanced_notepad = await self._create_control_headquarters_scene(roadmap, conversation_context)
+            conversation_context["enhanced_notepad"] = enhanced_notepad
+            
             # Add context about the current goal
             conversation_context["current_goal"] = "Find the right tires for the user's vehicle"
             conversation_context["current_step"] = conversation_context.get("current_step", "greeting")
@@ -203,4 +208,71 @@ class BaseAgent(ABC):
     def update_roadmap_data(self, roadmap: Dict[str, Any], category: DataCategory, data: Any):
         """Update roadmap with new data"""
         # For now, just log the data update
-        logger.info(f"Data update: {category.value} = {data}") 
+        logger.info(f"Data update: {category.value} = {data}")
+    
+    async def _create_control_headquarters_scene(self, roadmap: Dict[str, Any], conversation_context: Dict[str, Any]) -> str:
+        """Transform basic ScribeAgent output into rich Control Headquarters scene"""
+        
+        # Get the basic notepad from ScribeAgent
+        basic_notepad = roadmap.get('ai_notepad', '')
+        form_data = conversation_context.get('form_data', {})
+        current_step = conversation_context.get('current_step', 'unknown')
+        
+        # Create the Control Headquarters scene prompt
+        scene_prompt = f"""
+You are creating a "Control Headquarters" scene for the Living Form Tire Sales Assistant, similar to the Inside Out movie's command center. This scene should be rich, emotional, and strategic.
+
+BASIC INFORMATION FROM SCRIBE:
+{basic_notepad}
+
+CURRENT CONTEXT:
+- Current Step: {current_step}
+- Form Data: {form_data}
+- User Message: {conversation_context.get('user_message', '')}
+
+Create a Control Headquarters scene with the following structure:
+
+# 🎬 Control Headquarters Scene
+
+## 🎭 The Emotions' Debate
+Create a lively debate between the emotions (Logic, Empathy, Urgency, Frustration, Curiosity, Joy, Caution) about the current situation. Each emotion should have a distinct perspective and personality.
+
+## 🌟 Memory Wall
+Show key memories and patterns from the conversation so far.
+
+## 👤 User Profile Dashboard
+Display the user's current state, known information, and emotional needs.
+
+## 📊 Strategic Command Decision
+Provide specific tactical guidance including:
+- Mission Commander's Directive
+- Target Agent (which agent should handle this)
+- Tactical Approach (tone and method)
+- Exact Action (what to do)
+- Success Metrics (how to measure success)
+- Contingency (what to do if it fails)
+
+Make this scene dynamic, emotional, and strategically useful. The emotions should debate based on the actual conversation context and provide actionable intelligence.
+"""
+        
+        try:
+            # Generate the Control Headquarters scene using a smaller model for cost efficiency
+            response = await self.ai_client.generate_response(
+                user_message=scene_prompt,
+                conversation_context={"current_step": "control_headquarters_creation"},
+                model_type=ModelType.GPT_4O_MINI,  # Use smaller model for scene creation
+                response_format="text"
+            )
+            
+            enhanced_scene = response.get("text", "").strip()
+            
+            # Track cost
+            self.cost_manager.track_cost("control_headquarters_creation", response["cost"], roadmap)
+            
+            logger.info(f"Created Control Headquarters scene: {enhanced_scene[:100]}...")
+            return enhanced_scene
+            
+        except Exception as e:
+            logger.error(f"Error creating Control Headquarters scene: {str(e)}")
+            # Fallback to basic notepad if scene creation fails
+            return basic_notepad 
