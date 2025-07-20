@@ -1066,6 +1066,30 @@
                 // Only used for initial form - replaces content
                 let html = '';
                 
+                // Show agent handoff information if present
+                if (response.handoff_info) {
+                    const handoff = response.handoff_info;
+                    html += `
+                        <div style="background:#dc3545;color:white;padding:12px 18px;border-radius:8px;margin-bottom:18px;font-size:14px;font-weight:500;text-align:center;border:2px solid #c82333;">
+                            🔄 <strong>AGENT SWITCH:</strong> ${handoff.from_agent} → ${handoff.to_agent}
+                            <br><small style="opacity:0.9;">${handoff.reason}</small>
+                        </div>
+                    `;
+                }
+                
+                // Show current agent info for debugging (more visible)
+                if (response.coordinator_info && response.coordinator_info.current_agent) {
+                    html += `
+                        <div style="background:#007bff;color:white;padding:8px 16px;border-radius:8px;margin-bottom:15px;font-size:13px;text-align:center;border:2px solid #0056b3;font-weight:500;">
+                            🤖 <strong>Current Agent:</strong> ${response.coordinator_info.current_agent}
+                        </div>
+                    `;
+                }
+                
+                // Debug: Log response data
+                console.log('Response coordinator_info:', response.coordinator_info);
+                console.log('Response handoff_info:', response.handoff_info);
+                
                 // Show inline guidance if present
                 if (response.inline_guidance) {
                     html += `<div class="inline-guidance" style="background:#fff3cd;border:1px solid #ffeeba;padding:12px 18px;border-radius:8px;color:#856404;margin-bottom:18px;font-size:15px;">${response.inline_guidance}</div>`;
@@ -1169,6 +1193,30 @@
             addNewFormBelow(response) {
                 // Add the new AI response below the current form
                 let html = '';
+                
+                // Show agent handoff information if present
+                if (response.handoff_info) {
+                    const handoff = response.handoff_info;
+                    html += `
+                        <div style="background:#dc3545;color:white;padding:12px 18px;border-radius:8px;margin-bottom:18px;font-size:14px;font-weight:500;text-align:center;border:2px solid #c82333;">
+                            🔄 <strong>AGENT SWITCH:</strong> ${handoff.from_agent} → ${handoff.to_agent}
+                            <br><small style="opacity:0.9;">${handoff.reason}</small>
+                        </div>
+                    `;
+                }
+                
+                // Show current agent info for debugging (more visible)
+                if (response.coordinator_info && response.coordinator_info.current_agent) {
+                    html += `
+                        <div style="background:#007bff;color:white;padding:8px 16px;border-radius:8px;margin-bottom:15px;font-size:13px;text-align:center;border:2px solid #0056b3;font-weight:500;">
+                            🤖 <strong>Current Agent:</strong> ${response.coordinator_info.current_agent}
+                        </div>
+                    `;
+                }
+                
+                // Debug: Log response data
+                console.log('Response coordinator_info:', response.coordinator_info);
+                console.log('Response handoff_info:', response.handoff_info);
                 
                 // Show inline guidance if present
                 if (response.inline_guidance) {

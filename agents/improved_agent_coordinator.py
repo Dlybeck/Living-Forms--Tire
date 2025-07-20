@@ -149,6 +149,19 @@ class ImprovedAgentCoordinator:
                 'state_summary': await self.state_manager.get_state_summary()
             }
             
+            # Debug logging
+            logger.info(f"Coordinator info: current_agent={state.current_agent}, handoff_occurred={should_handoff}")
+            logger.info(f"Response keys: {list(response.keys())}")
+            
+            # Add handoff information for debugging
+            if should_handoff:
+                response['handoff_info'] = {
+                    'from_agent': current_agent_name,
+                    'to_agent': target_agent_name,
+                    'reason': handoff_msg.validation_result.get('reason', 'Agent handoff'),
+                    'timestamp': datetime.now().isoformat()
+                }
+            
             # Add notepad content to response (use enhanced Control Headquarters scene if available)
             if 'enhanced_notepad' in response:
                 response['notepad_content'] = response['enhanced_notepad']
