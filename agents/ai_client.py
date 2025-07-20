@@ -152,6 +152,13 @@ class AIClient:
             context_parts.append(f"User Selected Method: {method}")
             context_parts.append("Form Submission: True")
             
+            # Add rich initial form context if available
+            if 'initial_form_context' in conversation_context:
+                init_context = conversation_context['initial_form_context']
+                context_parts.append(f"User's exact selection: {init_context['selected_label']}")
+                context_parts.append(f"User's description: {init_context['selected_description']}")
+                context_parts.append(f"User's context: {init_context['user_context']}")
+            
             # Add specific context based on method
             if method == 'not_sure':
                 context_parts.append("User needs help figuring out vehicle information")

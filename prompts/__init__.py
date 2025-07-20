@@ -10,6 +10,7 @@ from .driving_info_agent_prompt import DRIVING_INFO_AGENT_PROMPT
 from .preferences_agent_prompt import PREFERENCES_AGENT_PROMPT
 from .recommendation_agent_prompt import RECOMMENDATION_AGENT_PROMPT
 from .scribe_agent_prompt import SCRIBE_AGENT_PROMPT
+from .memory_manager_prompt import MEMORY_MANAGER_SUMMARY_PROMPT
 
 # Convenience functions for backward compatibility
 def get_main_system_prompt():

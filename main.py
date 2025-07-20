@@ -75,7 +75,7 @@ async def chat_endpoint(chat_request: ChatMessage):
             conversation_state=response_data.get("coordinator_info", {}).get("current_step", "unknown"),
             cost_info=response_data.get("cost_info", {"total_cost": 0.0}),
             session_id=chat_request.session_id,
-            notepad_content=session_info.get("notepad_content", "")
+            notepad_content=response_data.get("notepad_content", "")
         )
         
     except Exception as e:

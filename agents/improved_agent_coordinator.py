@@ -78,12 +78,11 @@ class ImprovedAgentCoordinator:
             conversation_context = await self._build_conversation_context(session_id, state, form_data)
             
             # Process with ScribeAgent first to extract information
-            # For now, skip ScribeAgent processing to avoid type issues
-            scribe_result = {
-                "extracted_info": {},
-                "notepad_updated": False,
-                "notepad_content": session.get('ai_notepad', '')
-            }
+            scribe_result = await self.scribe_agent.extract_and_record(
+                user_message=user_message,
+                roadmap=session,
+                conversation_context=conversation_context
+            )
             
             # Update state with extracted information
             if scribe_result.get("extracted_info"):
@@ -149,6 +148,9 @@ class ImprovedAgentCoordinator:
                 'memory_stats': self.memory_manager.get_memory_stats(session),
                 'state_summary': await self.state_manager.get_state_summary()
             }
+            
+            # Add notepad content to response
+            response['notepad_content'] = session.get('ai_notepad', '')
             
             return response
             

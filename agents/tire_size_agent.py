@@ -81,6 +81,16 @@ class TireSizeAgent(BaseAgent):
                 conversation_context['user_selected_method'] = method
                 conversation_context['form_submission'] = True
                 
+                # Enhanced context for initial form
+                if form_data.get('_context', {}).get('is_initial_form'):
+                    context = form_data['_context']
+                    logger.info(f"Initial form context: {context}")
+                    conversation_context['initial_form_context'] = {
+                        'selected_label': context['selected_label'],
+                        'selected_description': context['selected_description'],
+                        'user_context': context['user_context']
+                    }
+                
                 # Handle specific method selections
                 if method == 'tire_size':
                     # User knows their tire size - check if they provided it

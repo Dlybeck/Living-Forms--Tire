@@ -11,6 +11,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from agents.ai_client import AIClient
 from agents.cost_manager import ModelType
+from prompts.memory_manager_prompt import MEMORY_MANAGER_SUMMARY_PROMPT
 
 logger = logging.getLogger(__name__)
 
@@ -253,28 +254,13 @@ class MemoryManager:
                 to_step = data.get('to_step', 'unknown')
                 formatted_events.append(f"{timestamp}: Advanced from {from_step} to {to_step}")
         
-        # Build the prompt
-        prompt = f"""
-You are creating an intelligent summary of a tire sales conversation. Your task is to compress {len(events)} conversation events while preserving ALL important information.
-
-IMPORTANT DATA TO PRESERVE:
-{important_data}
-
-CONVERSATION EVENTS:
-{chr(10).join(formatted_events)}
-
-REQUIREMENTS:
-{chr(10).join(f"- {req}" for req in requirements)}
-
-Create a comprehensive summary that:
-1. Preserves ALL user-provided information (not "I don't know" responses)
-2. Includes reasoning for why information is important for tire recommendations
-3. Maintains conversation flow context
-4. Focuses on information that will help with tire recommendations
-5. Is clear and well-structured
-
-Summary:
-"""
+        # Build the prompt using the imported template
+        formatted_requirements = chr(10).join(f"- {req}" for req in requirements)
+        prompt = MEMORY_MANAGER_SUMMARY_PROMPT.format(
+            important_data=important_data,
+            formatted_events=chr(10).join(formatted_events),
+            formatted_requirements=formatted_requirements
+        )
         
         return prompt
     

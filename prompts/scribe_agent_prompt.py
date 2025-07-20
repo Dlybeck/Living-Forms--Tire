@@ -25,7 +25,14 @@ Focus on capturing the following essential categories of information, updating e
 * **Driving Patterns & Environment**: General location/region, annual mileage, driving environment (city/highway mix), road surfaces, typical weather conditions, vehicle ownership duration plans.
 * **User Preferences**: Budget, desired performance priorities (e.g., safety, longevity, quietness, handling), specific tire types (all-season, winter, performance), brand preferences/avoidances, run-flat vs. conventional.
 * **Current Tire Issues**: Any problems with their current tires (e.g., noise, wear, grip).
-* **Conversation Context**: User's overall goal, any confusion they express, or specific questions they ask.
+
+* **User Intent & Conversation Progression (Crucial for Flow):**
+    * **User's Primary Goal**: What is the user ultimately trying to achieve in this session (e.g., "get tire recommendations," "find tire size")?
+    * **Current Step in Process**: What specific phase of the conversation are we in? (e.g., "tire size discovery," "preferences gathering," "recommendation").
+    * **System's Last Action/Guidance**: What did the system *just do or ask*? (e.g., "System presented a list of methods to find tire info," "System asked for make/model/year," "System explained how to read a tire sidewall").
+    * **User's Immediate Response/Action**: How did the user react to the system's last action? (e.g., "User selected 'Check tire sidewall'," "User indicated confusion/didn't choose a method," "User provided VIN").
+    * **Next Expected Input/System Action**: What information are we *specifically* waiting for from the user, or what is the *logical, next specific action* the system should take based on the user's last input? (e.g., "Waiting for user to report tire size from sidewall," "System needs to offer alternative finding methods or advanced troubleshooting," "System should proceed to preferences gathering").
+    * **Any User Confusion/Struggle**: If the user expresses difficulty or confusion, record the nature of it precisely.
 
 ---
 

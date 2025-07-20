@@ -403,32 +403,53 @@ class FormBuilder:
                 args = {}
                 
                 # Special handling for arrays - look for options=["item1", "item2", "item3"]
+                # Also handle incomplete arrays that might be missing the closing bracket
                 options_match = re.search(r'options\s*=\s*\[(.*?)\]', args_str, re.DOTALL)
+                if not options_match:
+                    # Try to find incomplete options array
+                    options_match = re.search(r'options\s*=\s*\[(.*?)(?=\n\s*\w+\s*=|$)', args_str, re.DOTALL)
+                
                 if options_match:
                     options_content = options_match.group(1)
-                    # Parse the options array
+                    # Parse the options array - handle multi-line and quoted strings
                     options = []
-                    current_option = ""
-                    in_quotes = False
-                    quote_char = None
                     
-                    for char in options_content:
-                        if char in ['"', "'"] and not in_quotes:
-                            in_quotes = True
-                            quote_char = char
-                        elif char == quote_char and in_quotes:
-                            in_quotes = False
-                            quote_char = None
-                        elif char == ',' and not in_quotes:
-                            if current_option.strip():
-                                options.append(current_option.strip().strip('"\''))
-                                current_option = ""
-                        else:
-                            current_option += char
-                    
-                    # Add the last option
-                    if current_option.strip():
-                        options.append(current_option.strip().strip('"\''))
+                    # Split by commas, but be careful about commas inside quotes
+                    import shlex
+                    try:
+                        # Use shlex to properly handle quoted strings
+                        lexer = shlex.shlex(options_content, posix=True)
+                        lexer.quotes = '"'  # Only handle double quotes
+                        lexer.whitespace = ',\n\r\t '  # Split on commas and whitespace
+                        lexer.whitespace_split = True
+                        
+                        for token in lexer:
+                            token = token.strip().strip('"\'')
+                            if token and token not in ['[', ']', ',']:
+                                options.append(token)
+                    except:
+                        # Fallback: simple parsing
+                        current_option = ""
+                        in_quotes = False
+                        quote_char = None
+                        
+                        for char in options_content:
+                            if char in ['"', "'"] and not in_quotes:
+                                in_quotes = True
+                                quote_char = char
+                            elif char == quote_char and in_quotes:
+                                in_quotes = False
+                                quote_char = None
+                            elif char == ',' and not in_quotes:
+                                if current_option.strip():
+                                    options.append(current_option.strip().strip('"\''))
+                                    current_option = ""
+                            else:
+                                current_option += char
+                        
+                        # Add the last option
+                        if current_option.strip():
+                            options.append(current_option.strip().strip('"\''))
                     
                     args["options"] = options
                     

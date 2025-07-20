@@ -110,7 +110,8 @@ class FunctionCallParser:
         
         # 3. Extract function calls WITHOUT parentheses (new flexible format)
         # Look for patterns like: [function_name param1="value" param2="value"]
-        bracket_pattern = r'\[([a-zA-Z_][a-zA-Z0-9_]*)\s+([^\]]+)\]'
+        # This handles multi-line function calls
+        bracket_pattern = r'\[([a-zA-Z_][a-zA-Z0-9_]*)\s*([^\]]*)\]'
         for match in re.finditer(bracket_pattern, ai_response):
             func_name = match.group(1)
             args_str = match.group(2)
@@ -123,6 +124,18 @@ class FunctionCallParser:
                     logger.info(f"Found function call without parentheses: {func_name} {args_str[:100]}...")
             else:
                 logger.debug(f"Ignoring invalid function call: {func_name} {args_str[:50]}...")
+        
+        # 4. Extract function calls with incomplete brackets (handle truncated AI output)
+        # Look for patterns like: [function_name ...] where the closing bracket might be missing
+        incomplete_pattern = r'\[([a-zA-Z_][a-zA-Z0-9_]*)\s*([^\]]*?)(?=\n\s*\[|\n\s*$|$)'
+        for match in re.finditer(incomplete_pattern, ai_response):
+            func_name = match.group(1)
+            args_str = match.group(2)
+            
+            # Only include if it's a valid function name and we haven't already found it
+            if func_name in valid_functions and (func_name, args_str) not in function_calls:
+                function_calls.append((func_name, args_str))
+                logger.info(f"Found incomplete function call: {func_name} {args_str[:100]}...")
         
         logger.info(f"Total function calls found: {len(function_calls)}")
         return function_calls

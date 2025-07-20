@@ -806,12 +806,16 @@
             setupEventListeners() {
                 // Use event delegation for form submissions - more reliable than individual handlers
                 this.mainFormArea.addEventListener('submit', (e) => {
+                    console.log('Submit event triggered on:', e.target);
                     if (e.target.tagName === 'FORM') {
                         e.preventDefault();
                         console.log('Form submitted via delegation:', e.target);
+                        console.log('Form ID:', e.target.id);
                         console.log('Form action:', e.target.action);
                         console.log('Form method:', e.target.method);
                         this.handleFormSubmission(e.target);
+                    } else {
+                        console.log('Submit event on non-form element:', e.target.tagName);
                     }
                 });
 
@@ -822,6 +826,19 @@
 
                 this.notepadIndicator.addEventListener('click', () => {
                     this.showNotepad();
+                });
+                
+                // Backup click handler for submit buttons (in case form submit doesn't work)
+                this.mainFormArea.addEventListener('click', (e) => {
+                    if (e.target.type === 'submit' && e.target.closest('form')) {
+                        console.log('Submit button clicked:', e.target);
+                        const form = e.target.closest('form');
+                        if (form) {
+                            e.preventDefault();
+                            console.log('Triggering form submission via button click');
+                            this.handleFormSubmission(form);
+                        }
+                    }
                 });
             }
 
@@ -873,7 +890,7 @@
                     </div>
                     
                     <div class="living-form" style="background:#f8f9fa;border:2px solid #e9ecef;border-radius:12px;padding:20px;margin-top:15px;">
-                        <form id="initial-form" data-form-type="initial">
+                        <form id="initial-form" data-form-type="initial" action="javascript:void(0);" method="post">
                             <div style="margin-bottom:20px;">
                                 <label style="display:block;margin-bottom:10px;font-weight:500;color:#495057;font-size:16px;">How would you like to provide your vehicle information?</label>
                                 <div style="margin-left:10px;">
@@ -912,7 +929,7 @@
                             </div>
                             
                             <div class="form-actions" style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px;padding-top:15px;border-top:1px solid #e9ecef;">
-                                <button type="submit" class="btn-primary" style="background:#667eea;color:white;border:none;padding:12px 24px;border-radius:8px;font-size:14px;font-weight:500;cursor:pointer;transition:background-color 0.3s ease;">
+                                <button type="submit" class="btn-primary" style="background:#667eea;color:white;border:none;padding:12px 24px;border-radius:8px;font-size:14px;font-weight:500;cursor:pointer;transition:background-color 0.3s ease;" onclick="console.log('Button clicked!');">
                                     Continue with Tire Search
                                 </button>
                             </div>
@@ -952,8 +969,52 @@
                     }
                 });
                 
+                // Enhanced context for the first form
+                if (form.id === 'initial-form' && formObject.info_method) {
+                    const methodContext = {
+                        'tire_size': {
+                            label: 'I know my tire size',
+                            description: 'I have the tire size (like 225/60R16) from my current tires',
+                            context: 'User has tire size information ready'
+                        },
+                        'make_model_year': {
+                            label: 'I know my vehicle details',
+                            description: 'I have the make, model, year, and submodel of my vehicle',
+                            context: 'User has vehicle information ready'
+                        },
+                        'vin': {
+                            label: 'I have my VIN number',
+                            description: 'I can find my Vehicle Identification Number (17 characters)',
+                            context: 'User has VIN number ready'
+                        },
+                        'not_sure': {
+                            label: 'I\'m not sure, help me figure this out',
+                            description: 'I need help determining what information I have or how to find it',
+                            context: 'User needs guidance on finding vehicle information'
+                        }
+                    };
+                    
+                    const selectedMethod = methodContext[formObject.info_method];
+                    if (selectedMethod) {
+                        formObject['_context'] = {
+                            'selected_label': selectedMethod.label,
+                            'selected_description': selectedMethod.description,
+                            'user_context': selectedMethod.context,
+                            'is_initial_form': true
+                        };
+                    }
+                }
+                
                 console.log('Form data being submitted:', formObject);
                 console.log('Has any input:', hasAnyInput);
+                
+                // Check if user selected an option for initial form
+                if (form.id === 'initial-form' && !formObject.info_method) {
+                    console.log('No option selected for initial form');
+                    alert('Please select an option before continuing.');
+                    form.dataset.submitting = 'false';
+                    return;
+                }
                 
                 // No validation required - AI will handle partial submissions and ask for what's needed
                 
@@ -1066,7 +1127,8 @@
                     
                     // Fill in the values and make inputs read-only
                     for (const [key, value] of Object.entries(formData)) {
-                        if (value && value.trim()) {
+                        // Skip non-string values (like _context object)
+                        if (typeof value === 'string' && value && value.trim()) {
                             const input = currentForm.querySelector(`[name="${key}"]`);
                             if (input) {
                                 input.value = value;
