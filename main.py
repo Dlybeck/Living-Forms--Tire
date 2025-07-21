@@ -13,7 +13,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Import our modules
-from agents.improved_agent_coordinator import ImprovedAgentCoordinator
+from agents.simple_dual_agent_coordinator import SimpleDualAgentCoordinator
 from agents.ai_client import AIClient
 from agents.cost_manager import CostManager, ModelType
 from agents.form_builder import FormBuilder
@@ -30,7 +30,7 @@ tire_db = TireDatabase()
 cost_manager = CostManager(config={"conversation_budget": 0.20})
 ai_client = AIClient()
 form_builder = FormBuilder()
-agent_coordinator = ImprovedAgentCoordinator(ai_client, cost_manager, form_builder, tire_db)
+agent_coordinator = SimpleDualAgentCoordinator(ai_client, cost_manager, form_builder, tire_db)
 
 # Request/Response models
 class ChatMessage(BaseModel):
@@ -85,7 +85,7 @@ async def chat_endpoint(chat_request: ChatMessage):
             conversation_state=response_data.get("coordinator_info", {}).get("current_step", "unknown"),
             cost_info=response_data.get("cost_info", {"total_cost": 0.0}),
             session_id=chat_request.session_id,
-            notepad_content=response_data.get("notepad_content", ""),
+            notepad_content=response_data.get("enhanced_notepad", response_data.get("notepad_content", "")),
             current_agent=response_data.get("current_agent", "Unknown"),
             agent_display_name=response_data.get("agent_display_name", "Unknown Agent"),
             coordinator_info=response_data.get("coordinator_info", {})

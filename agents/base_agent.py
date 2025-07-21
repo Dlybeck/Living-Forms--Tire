@@ -9,7 +9,7 @@ from agents.ai_client import AIClient
 from agents.cost_manager import CostManager, ModelType
 from agents.function_call_parser import FunctionCallParser
 from agents.form_builder import FormBuilder
-from utils.conversation_enums import ConversationStep, DataCategory
+# Removed conversation enums - simplified system
 import logging
 
 logger = logging.getLogger(__name__)
@@ -77,11 +77,11 @@ class BaseAgent(ABC):
                 "current_agent": self.agent_name,
                 "agent_display_name": self._get_agent_display_name(),
                 # Agent completion signaling
-                "agent_complete": completion_assessment["is_complete"],
-                "completion_reason": completion_assessment["reason"],
-                "data_quality_score": completion_assessment["quality_score"],
-                "missing_critical_data": completion_assessment["missing_data"],
-                "recommendation_readiness": completion_assessment["recommendation_readiness"]
+                "agent_complete": completion_assessment.get("is_complete", False),
+                "completion_reason": completion_assessment.get("reason", "Continuing assistance"),
+                "data_quality_score": completion_assessment.get("quality_score", 0.0),
+                "missing_critical_data": completion_assessment.get("missing_data", []),
+                "recommendation_readiness": completion_assessment.get("recommendation_readiness", False)
             }
         except Exception as e:
             logger.error(f"Error in {self.agent_name}: {str(e)}")
@@ -253,6 +253,11 @@ class BaseAgent(ABC):
             is_complete = False
             reason = "Continuing to help user with recommendations"
             
+        elif self.agent_name == "ComprehensiveTireAgent":
+            # Never done until user is done - handles entire conversation
+            is_complete = False
+            reason = "Continuing comprehensive tire assistance"
+            
         else:
             # Default: let the agent decide
             is_complete = False
@@ -289,10 +294,10 @@ class BaseAgent(ABC):
             "recommendation_readiness": False
         }
     
-    def update_roadmap_data(self, roadmap: Dict[str, Any], category: DataCategory, data: Any):
+    def update_roadmap_data(self, roadmap: Dict[str, Any], category: str, data: Any):
         """Update roadmap with new data"""
         # For now, just log the data update
-        logger.info(f"Data update: {category.value} = {data}")
+        logger.info(f"Data update: {category} = {data}")
     
     async def _create_control_headquarters_scene(self, roadmap: Dict[str, Any], conversation_context: Dict[str, Any]) -> str:
         """Transform basic ScribeAgent output into rich Control Headquarters scene"""

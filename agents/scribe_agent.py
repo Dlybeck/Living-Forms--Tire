@@ -10,7 +10,7 @@ from agents.base_agent import BaseAgent
 from agents.ai_client import AIClient
 from agents.cost_manager import CostManager, ModelType
 from agents.form_builder import FormBuilder
-from utils.conversation_enums import ConversationStep, DataCategory
+# Removed conversation enums - simplified system
 from prompts.scribe_agent_prompt import SCRIBE_AGENT_PROMPT
 
 logger = logging.getLogger(__name__)

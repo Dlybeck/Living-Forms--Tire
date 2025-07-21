@@ -108,8 +108,8 @@ class AIClient:
         """Build prompt based on context and format requirements"""
         
         # Get the system prompt
-        from prompts import get_main_system_prompt
-        system_prompt = get_main_system_prompt()
+        from prompts.system_prompt import SYSTEM_PROMPT
+        system_prompt = SYSTEM_PROMPT
         
         # Add function documentation if provided
         if function_documentation:
