@@ -88,9 +88,21 @@ class ImprovedAgentCoordinator:
             if scribe_result.get("extracted_info"):
                 await self._update_state_with_extracted_info(state, scribe_result["extracted_info"])
             
-            # Check if handoff is needed
+            # Get current agent
+            current_agent = self.agent_mapping.get(state.current_agent)
+            if not current_agent:
+                raise ValueError(f"Unknown agent: {state.current_agent}")
+            
+            # Process with current agent FIRST
+            response = await current_agent.process_message(
+                user_message=user_message,
+                roadmap=session,  # Pass session instead of roadmap
+                conversation_context=conversation_context
+            )
+            
+            # Check if handoff is needed AFTER processing
             current_agent_name = state.current_agent
-            should_handoff = await self.handoff_manager.should_handoff(current_agent_name, state, conversation_context)
+            should_handoff = response.get('agent_complete', False)
             
             if should_handoff:
                 # Determine target agent
@@ -112,21 +124,31 @@ class ImprovedAgentCoordinator:
                         current_agent=target_agent_name
                     )
                     
+                    # Get the new agent
+                    next_agent = self.agent_mapping.get(target_agent_name)
+                    if not next_agent:
+                        raise ValueError(f"Unknown target agent: {target_agent_name}")
+                    
+                    # Process with next agent using the SAME user message
+                    next_response = await next_agent.process_message(
+                        user_message=user_message,
+                        roadmap=session,
+                        conversation_context=conversation_context
+                    )
+                    
+                    # Use the next agent's response
+                    response = next_response
+                    
                     logger.info(f"Handoff completed: {handoff_result}")
                 else:
                     logger.warning(f"Handoff validation failed: {handoff_msg.validation_result['errors']}")
             
-            # Get current agent
-            current_agent = self.agent_mapping.get(state.current_agent)
-            if not current_agent:
-                raise ValueError(f"Unknown agent: {state.current_agent}")
-            
-            # Process with current agent
-            response = await current_agent.process_message(
-                user_message=user_message,
-                roadmap=session,  # Pass session instead of roadmap
-                conversation_context=conversation_context
-            )
+            # Add agent completion signals to context for handoff logic
+            conversation_context['agent_complete'] = response.get('agent_complete', False)
+            conversation_context['completion_reason'] = response.get('completion_reason', '')
+            conversation_context['data_quality_score'] = response.get('data_quality_score', 0.0)
+            conversation_context['missing_critical_data'] = response.get('missing_critical_data', [])
+            conversation_context['recommendation_readiness'] = response.get('recommendation_readiness', False)
             
             # Update session history with response
             await self._update_session_history(session, user_message, response, form_data)
@@ -139,6 +161,10 @@ class ImprovedAgentCoordinator:
             # Update session
             await self._update_session(session_id, session)
             
+            # Add agent information to top level for easy frontend access
+            response['current_agent'] = response.get('current_agent', state.current_agent)
+            response['agent_display_name'] = response.get('agent_display_name', 'Unknown Agent')
+            
             # Add coordination metadata
             response['coordinator_info'] = {
                 'current_step': state.current_step.value,
@@ -146,12 +172,25 @@ class ImprovedAgentCoordinator:
                 'handoff_occurred': should_handoff,
                 'compression_occurred': compression_occurred,
                 'memory_stats': self.memory_manager.get_memory_stats(session),
-                'state_summary': await self.state_manager.get_state_summary()
+                'state_summary': await self.state_manager.get_state_summary(),
+                # Agent identification
+                'current_agent_name': response.get('current_agent', state.current_agent),
+                'agent_display_name': response.get('agent_display_name', 'Unknown Agent'),
+                # Agent completion information
+                'agent_complete': response.get('agent_complete', False),
+                'completion_reason': response.get('completion_reason', ''),
+                'data_quality_score': response.get('data_quality_score', 0.0),
+                'missing_critical_data': response.get('missing_critical_data', []),
+                'recommendation_readiness': response.get('recommendation_readiness', False),
+                # Handoff flow information
+                'handoff_flow': 'post_processing' if should_handoff else 'none'
             }
             
             # Debug logging
             logger.info(f"Coordinator info: current_agent={state.current_agent}, handoff_occurred={should_handoff}")
             logger.info(f"Response keys: {list(response.keys())}")
+            logger.info(f"Agent display name: {response.get('agent_display_name', 'NOT FOUND')}")
+            logger.info(f"Current agent: {response.get('current_agent', 'NOT FOUND')}")
             
             # Add handoff information for debugging
             if should_handoff:

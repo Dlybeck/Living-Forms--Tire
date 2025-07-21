@@ -46,6 +46,9 @@ class ChatResponse(BaseModel):
     cost_info: Dict[str, Any]
     session_id: str
     notepad_content: Optional[str] = None  # Add notepad content to response
+    current_agent: Optional[str] = None  # Current agent name
+    agent_display_name: Optional[str] = None  # User-friendly agent name
+    coordinator_info: Optional[Dict[str, Any]] = None  # Coordinator metadata
 
 @app.get("/", response_class=HTMLResponse)
 async def get_chat_interface(request: Request):
@@ -65,18 +68,34 @@ async def chat_endpoint(chat_request: ChatMessage):
             form_data=chat_request.form_data
         )
         
+        # Debug logging
+        logger.info(f"Response data keys: {list(response_data.keys())}")
+        logger.info(f"Agent display name: {response_data.get('agent_display_name', 'NOT FOUND')}")
+        logger.info(f"Current agent: {response_data.get('current_agent', 'NOT FOUND')}")
+        logger.info(f"Coordinator info: {response_data.get('coordinator_info', 'NOT FOUND')}")
+        
         # Get session info for response
         session_info = await agent_coordinator.get_session_info(chat_request.session_id)
         
-        return ChatResponse(
+        # Create response
+        chat_response = ChatResponse(
             response=response_data.get("response") or "",
             form_html=response_data.get("form_html"),
             inline_guidance=response_data.get("inline_guidance"),
             conversation_state=response_data.get("coordinator_info", {}).get("current_step", "unknown"),
             cost_info=response_data.get("cost_info", {"total_cost": 0.0}),
             session_id=chat_request.session_id,
-            notepad_content=response_data.get("notepad_content", "")
+            notepad_content=response_data.get("notepad_content", ""),
+            current_agent=response_data.get("current_agent", "Unknown"),
+            agent_display_name=response_data.get("agent_display_name", "Unknown Agent"),
+            coordinator_info=response_data.get("coordinator_info", {})
         )
+        
+        # Debug logging
+        logger.info(f"Final response - current_agent: {chat_response.current_agent}")
+        logger.info(f"Final response - agent_display_name: {chat_response.agent_display_name}")
+        
+        return chat_response
         
     except Exception as e:
         logger.error(f"Error processing chat request: {str(e)}")

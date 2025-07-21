@@ -338,23 +338,17 @@ class AgentHandoff:
         return self.agent_mapping.get(step, "TireSizeAgent")  # Default fallback
     
     async def should_handoff(self, current_agent: str, state: ConversationState, context: Dict[str, Any]) -> bool:
-        """Determine if a handoff should occur"""
+        """Simple handoff logic based on agent completion signals"""
         
-        # Check if current agent is appropriate for current step
-        expected_agent = self.agent_mapping.get(state.current_step)
-        if expected_agent != current_agent:
+        # Simple rule: handoff if agent signals completion
+        agent_complete = context.get('agent_complete', False)
+        
+        if agent_complete:
+            logger.info(f"Agent {current_agent} signals completion - proceeding with handoff")
             return True
         
-        # Check if step is complete and we can advance
-        if state.is_step_complete(state.current_step):
-            next_step = await self._get_next_step(state.current_step)
-            if next_step:
-                return True
-        
-        # Check if there's an error that requires different agent
-        if 'error' in context or 'issue' in context:
-            return True
-        
+        # Don't handoff if agent is not complete
+        logger.info(f"Agent {current_agent} not complete - no handoff")
         return False
     
     async def _get_next_step(self, current_step: ConversationStep) -> Optional[ConversationStep]:
@@ -377,4 +371,5 @@ class AgentHandoff:
         except ValueError:
             logger.error(f"Current step {current_step} not found in sequence")
         
+        return None 
         return None 

@@ -112,4 +112,60 @@ class PreferencesAgent(BaseAgent):
         if considerations:
             preferences['special_considerations'] = considerations
         
-        return preferences if preferences else None 
+        return preferences if preferences else None
+    
+    async def _assess_task_completion(self, conversation_context: Dict[str, Any]) -> Dict[str, Any]:
+        """Assess if preferences collection is complete"""
+        
+        # Get form data and conversation context
+        form_data = conversation_context.get('form_data', {})
+        enhanced_notepad = conversation_context.get('enhanced_notepad', '')
+        
+        # Required data points for preferences (budget is preferred but not critical)
+        required_fields = [
+            'performance_priorities', 'tire_type', 'brand_preferences', 'special_considerations'
+        ]
+        preferred_fields = ['budget_range', 'budget_category']
+        
+        # Check what data we have
+        collected_data = {}
+        missing_data = []
+        quality_score = 0.0
+        
+        # Check required fields (4 fields)
+        for field in required_fields:
+            if field in form_data and form_data[field] and str(form_data[field]).lower() not in ['i don\'t know', 'i\'m not sure', '']:
+                collected_data[field] = form_data[field]
+                quality_score += 0.25  # 1.0 / 4 required fields
+            else:
+                missing_data.append(field)
+        
+        # Check preferred fields (bonus points)
+        preferred_score = 0.0
+        for field in preferred_fields:
+            if field in form_data and form_data[field] and str(form_data[field]).lower() not in ['i don\'t know', 'i\'m not sure', '']:
+                collected_data[field] = form_data[field]
+                preferred_score += 0.125  # Bonus points for preferred fields
+        
+        # Add preferred score to total quality
+        total_quality_score = quality_score + preferred_score
+        
+        # Check if we have enough data for recommendations
+        is_complete = quality_score >= 1.0  # Need all 4 required fields
+        recommendation_readiness = quality_score >= 0.75  # Need at least 3 out of 4 required fields (75%)
+        
+        # Determine completion reason
+        if is_complete:
+            reason = f"Complete preferences profile collected ({total_quality_score:.1%} quality score)"
+        elif recommendation_readiness:
+            reason = f"Sufficient preferences for recommendations ({total_quality_score:.1%} quality score)"
+        else:
+            reason = f"Incomplete preferences - need {len(missing_data)} more data points"
+        
+        return {
+            "is_complete": is_complete,
+            "reason": reason,
+            "quality_score": total_quality_score,
+            "missing_data": missing_data,
+            "recommendation_readiness": recommendation_readiness
+        } 

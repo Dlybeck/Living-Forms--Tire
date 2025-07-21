@@ -59,6 +59,9 @@ class BaseAgent(ABC):
                 user_message, roadmap, conversation_context
             )
             
+            # Assess task completion based on agent-specific criteria
+            completion_assessment = await self._assess_task_completion(conversation_context)
+            
             return {
                 "response": response.get("response", ""),
                 "conversation_text": response.get("conversation_text", ""),
@@ -69,7 +72,16 @@ class BaseAgent(ABC):
                     "total_cost": response.get("cost", 0.0),
                     "model_used": response.get("model_used", "unknown")
                 },
-                "source": f"{self.agent_name}_single_model"
+                "source": f"{self.agent_name}_single_model",
+                # Agent identification
+                "current_agent": self.agent_name,
+                "agent_display_name": self._get_agent_display_name(),
+                # Agent completion signaling
+                "agent_complete": completion_assessment["is_complete"],
+                "completion_reason": completion_assessment["reason"],
+                "data_quality_score": completion_assessment["quality_score"],
+                "missing_critical_data": completion_assessment["missing_data"],
+                "recommendation_readiness": completion_assessment["recommendation_readiness"]
             }
         except Exception as e:
             logger.error(f"Error in {self.agent_name}: {str(e)}")
@@ -191,6 +203,69 @@ class BaseAgent(ABC):
         # Override in subclasses for specific logic
         return "collect_information"
     
+    def _get_agent_display_name(self) -> str:
+        """Get a user-friendly display name for this agent"""
+        display_names = {
+            "TireSizeAgent": "Tire Size Specialist",
+            "DrivingInfoAgent": "Driving Pattern Analyst", 
+            "PreferencesAgent": "Preference Advisor",
+            "RecommendationAgent": "Tire Recommendation Expert",
+            "ScribeAgent": "Conversation Manager"
+        }
+        return display_names.get(self.agent_name, self.agent_name)
+    
+    async def _assess_task_completion(self, conversation_context: Dict[str, Any]) -> Dict[str, Any]:
+        """Intelligent completion assessment based on agent expertise"""
+        
+        # Let each agent use its intelligence to decide when it's done
+        # This replaces rigid systematic rules with expert judgment
+        
+        if self.agent_name == "TireSizeAgent":
+            # Done when we know exactly what tires will fit and work
+            important_data = conversation_context.get("important_data", {})
+            has_vehicle_info = all(important_data.get(field) for field in ["vehicle_make", "vehicle_model", "vehicle_year"])
+            has_tire_specs = important_data.get("tire_size") or important_data.get("vehicle_trim")
+            
+            is_complete = has_vehicle_info and has_tire_specs
+            reason = "Vehicle and tire specifications complete" if is_complete else "Need more vehicle/tire information"
+            
+        elif self.agent_name == "DrivingInfoAgent":
+            # Done when we can recommend objectively good tires
+            important_data = conversation_context.get("important_data", {})
+            has_driving_pattern = important_data.get("driving_pattern")
+            has_climate = important_data.get("climate_considerations")
+            has_mileage = important_data.get("mileage_per_year")
+            
+            is_complete = has_driving_pattern and has_climate and has_mileage
+            reason = "Driving information sufficient for recommendations" if is_complete else "Need more driving context"
+            
+        elif self.agent_name == "PreferencesAgent":
+            # Done when we know what the user is looking for
+            important_data = conversation_context.get("important_data", {})
+            has_performance_priorities = important_data.get("performance_priorities")
+            has_tire_type = important_data.get("tire_type")
+            
+            is_complete = has_performance_priorities and has_tire_type
+            reason = "User preferences understood" if is_complete else "Need more preference information"
+            
+        elif self.agent_name == "RecommendationAgent":
+            # Never done until user is done
+            is_complete = False
+            reason = "Continuing to help user with recommendations"
+            
+        else:
+            # Default: let the agent decide
+            is_complete = False
+            reason = "Agent-specific completion logic"
+        
+        return {
+            "is_complete": is_complete,
+            "reason": reason,
+            "quality_score": 1.0 if is_complete else 0.0,
+            "missing_data": [],
+            "recommendation_readiness": is_complete
+        }
+    
     def _create_error_response(self, error_message: str) -> Dict[str, Any]:
         """Create an error response"""
         return {
@@ -202,7 +277,16 @@ class BaseAgent(ABC):
             "conversation_text": "I'm experiencing some technical difficulties. Please try again.",
             "form_html": "",
             "cost_info": {"total_cost": 0.0, "model_used": "error"},
-            "source": f"{self.agent_name}_error"
+            "source": f"{self.agent_name}_error",
+            # Agent identification
+            "current_agent": self.agent_name,
+            "agent_display_name": self._get_agent_display_name(),
+            # Agent completion signaling
+            "agent_complete": False,
+            "completion_reason": "Error occurred",
+            "data_quality_score": 0.0,
+            "missing_critical_data": ["error_occurred"],
+            "recommendation_readiness": False
         }
     
     def update_roadmap_data(self, roadmap: Dict[str, Any], category: DataCategory, data: Any):

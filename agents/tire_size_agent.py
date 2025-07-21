@@ -128,4 +128,61 @@ class TireSizeAgent(BaseAgent):
         if year_match:
             vehicle_info['year'] = year_match.group()
         
-        return vehicle_info if vehicle_info else None 
+        return vehicle_info if vehicle_info else None
+    
+    async def _assess_task_completion(self, conversation_context: Dict[str, Any]) -> Dict[str, Any]:
+        """Assess if tire size discovery is complete"""
+        
+        # Get form data and conversation context
+        form_data = conversation_context.get('form_data', {})
+        enhanced_notepad = conversation_context.get('enhanced_notepad', '')
+        
+        # Required data points for tire size discovery
+        required_fields = [
+            'vehicle_make', 'vehicle_model', 'vehicle_year', 'vehicle_trim',
+            'tire_size', 'load_rating', 'speed_rating', 'run_flat_preference'
+        ]
+        preferred_fields = ['current_tire_condition', 'number_of_tires']
+        
+        # Check what data we have
+        collected_data = {}
+        missing_data = []
+        quality_score = 0.0
+        
+        # Check required fields (8 fields)
+        for field in required_fields:
+            if field in form_data and form_data[field] and str(form_data[field]).lower() not in ['i don\'t know', 'i\'m not sure', '']:
+                collected_data[field] = form_data[field]
+                quality_score += 0.125  # 1.0 / 8 required fields
+            else:
+                missing_data.append(field)
+        
+        # Check preferred fields (bonus points)
+        preferred_score = 0.0
+        for field in preferred_fields:
+            if field in form_data and form_data[field] and str(form_data[field]).lower() not in ['i don\'t know', 'i\'m not sure', '']:
+                collected_data[field] = form_data[field]
+                preferred_score += 0.0625  # Bonus points for preferred fields
+        
+        # Add preferred score to total quality
+        total_quality_score = quality_score + preferred_score
+        
+        # Check if we have enough data for recommendations
+        is_complete = quality_score >= 0.875  # Need at least 7 out of 8 required fields (87.5%)
+        recommendation_readiness = quality_score >= 0.75  # Need at least 6 out of 8 required fields (75%)
+        
+        # Determine completion reason
+        if is_complete:
+            reason = f"Complete vehicle and tire specifications collected ({total_quality_score:.1%} quality score)"
+        elif recommendation_readiness:
+            reason = f"Sufficient vehicle information for recommendations ({total_quality_score:.1%} quality score)"
+        else:
+            reason = f"Incomplete vehicle information - need {len(missing_data)} more data points"
+        
+        return {
+            "is_complete": is_complete,
+            "reason": reason,
+            "quality_score": total_quality_score,
+            "missing_data": missing_data,
+            "recommendation_readiness": recommendation_readiness
+        } 

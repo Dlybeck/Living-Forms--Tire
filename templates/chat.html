@@ -1077,18 +1077,21 @@
                     `;
                 }
                 
-                // Show current agent info for debugging (more visible)
-                if (response.coordinator_info && response.coordinator_info.current_agent) {
-                    html += `
-                        <div style="background:#007bff;color:white;padding:8px 16px;border-radius:8px;margin-bottom:15px;font-size:13px;text-align:center;border:2px solid #0056b3;font-weight:500;">
-                            🤖 <strong>Current Agent:</strong> ${response.coordinator_info.current_agent}
-                        </div>
-                    `;
+                // Show current agent info (user-friendly display) - SIMPLE VERSION
+                console.log('🔍 Agent display check:', response.agent_display_name);
+                if (response.agent_display_name) {
+                    console.log('✅ Adding agent display for:', response.agent_display_name);
+                    html += `<div style="background:#007bff;color:white;padding:12px 20px;border-radius:8px;margin-bottom:20px;font-size:16px;text-align:center;border:3px solid #0056b3;font-weight:bold;box-shadow:0 4px 8px rgba(0,0,0,0.2);">🤖 <strong>Current Specialist:</strong> ${response.agent_display_name}</div>`;
+                } else {
+                    console.log('❌ No agent_display_name found in response');
                 }
                 
                 // Debug: Log response data
+                console.log('🔍 FULL RESPONSE OBJECT:', response);
                 console.log('Response coordinator_info:', response.coordinator_info);
                 console.log('Response handoff_info:', response.handoff_info);
+                console.log('Response agent_display_name:', response.agent_display_name);
+                console.log('Response current_agent:', response.current_agent);
                 
                 // Show inline guidance if present
                 if (response.inline_guidance) {
