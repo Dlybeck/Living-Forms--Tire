@@ -1,3 +1,8 @@
+"""
+Simplified Form Builder
+Generates HTML form fields with clean, maintainable code
+"""
+
 from typing import List, Optional, Dict, Any
 import logging
 
@@ -5,498 +10,486 @@ logger = logging.getLogger(__name__)
 
 class FormBuilder:
     """
-    Form builder that generates HTML form fields through function calls.
-    This replaces the unreliable parsing approach with direct function execution.
+    Simplified form builder that generates HTML form fields
     """
     
     def __init__(self):
         self.field_count = 0
     
-    def create_text_field(self, name: str, label: Optional[str] = None, required: bool = False, placeholder: Optional[str] = None, help_text: Optional[str] = None) -> str:
+    def create_text_field(self, name: str, label: Optional[str] = None, required: bool = False, 
+                         placeholder: Optional[str] = None, help_text: Optional[str] = None) -> str:
         """Create a single-line text input field"""
         self.field_count += 1
-        if not label:
-            label = name.replace('_', ' ').capitalize()
+        label = label or name.replace('_', ' ').capitalize()
+        placeholder = placeholder or self._get_default_placeholder(name)
         
-        # Provide default placeholders if none given
-        if not placeholder:
-            field_name = name.lower()
-            if 'make' in field_name:
-                placeholder = "e.g., Honda, Toyota, Ford, Kia, Hyundai"
-            elif 'model' in field_name:
-                placeholder = "e.g., Accord, Camry, F-150, Forte, Sonata"
-            elif 'year' in field_name:
-                placeholder = "e.g., 2015, 2020, 2023"
-            elif 'size' in field_name or 'tire' in field_name:
-                placeholder = "e.g., 205/55R16, 225/45R17"
-            elif 'mileage' in field_name:
-                placeholder = "e.g., 15,000, 50,000"
-            else:
-                placeholder = "Enter your answer here"
-        
-        required_attr = "required" if required else ""
-        placeholder_attr = f'placeholder="{placeholder}"' if placeholder else ""
-        help_html = f'<small style="color:#6c757d;display:block;margin-top:5px;">{help_text}</small>' if help_text else ""
-        
-        return f"""
-        <div style="margin-bottom:20px;">
-            <label style="display:block;margin-bottom:5px;font-weight:500;color:#495057;">{label}</label>
-            <input type="text" name="{name}" {required_attr} {placeholder_attr} style="width:100%;padding:12px;border:2px solid #e9ecef;border-radius:6px;font-size:14px;font-family: inherit;">
-            {help_html}
-        </div>
-        """
+        return self._create_field_html(
+            field_type="text",
+            name=name,
+            label=label,
+            required=required,
+            placeholder=placeholder,
+            help_text=help_text
+        )
     
-    def create_textarea_field(self, name: str, label: Optional[str] = None, required: bool = False, placeholder: Optional[str] = None, rows: int = 3, help_text: Optional[str] = None) -> str:
+    def create_textarea_field(self, name: str, label: Optional[str] = None, required: bool = False,
+                             placeholder: Optional[str] = None, rows: int = 3, help_text: Optional[str] = None) -> str:
         """Create a multi-line textarea field"""
-        # Safety check: Prevent AI from manually creating the additional_notes field
         if name == "additional_notes":
             logger.warning("AI attempted to manually create additional_notes field - this is automatically added. Skipping.")
             return ""
         
         self.field_count += 1
-        if not label:
-            label = name.replace('_', ' ').capitalize()
-        required_attr = "required" if required else ""
-        placeholder_attr = f'placeholder="{placeholder}"' if placeholder else ""
-        help_html = f'<small style="color:#6c757d;display:block;margin-top:5px;">{help_text}</small>' if help_text else ""
+        label = label or name.replace('_', ' ').capitalize()
         
-        return f"""
-        <div style="margin-bottom:20px;">
-            <label style="display:block;margin-bottom:5px;font-weight:500;color:#495057;">{label}</label>
-            <textarea name="{name}" {required_attr} {placeholder_attr} rows="{rows}" style="width:100%;padding:12px;border:2px solid #e9ecef;border-radius:6px;font-size:14px;resize:vertical;font-family: inherit;"></textarea>
-            {help_html}
-        </div>
-        """
+        return self._create_field_html(
+            field_type="textarea",
+            name=name,
+            label=label,
+            required=required,
+            placeholder=placeholder,
+            help_text=help_text,
+            rows=rows
+        )
     
-    def create_select_field(self, name: str, label: Optional[str] = None, options: Optional[List[str]] = None, required: bool = False, help_text: Optional[str] = None) -> str:
+    def create_select_field(self, name: str, label: Optional[str] = None, options: Optional[List[str]] = None,
+                           required: bool = False, help_text: Optional[str] = None) -> str:
         """Create a dropdown select field"""
         self.field_count += 1
-        if not label:
-            label = name.replace('_', ' ').capitalize()
-        if options is None:
-            options = []
+        label = label or name.replace('_', ' ').capitalize()
+        # Ensure options is a list
+        if isinstance(options, str):
+            import ast
+            try:
+                options = ast.literal_eval(options)
+            except Exception:
+                options = [options]
+        options = options or []
         
-        # Always add "I don't know" option to help users who are unsure
+        # Add "I don't know" option if not present
         if "I don't know" not in options and "I'm not sure" not in options:
             options.append("I don't know")
         
-        required_attr = "required" if required else ""
-        options_html = ""
-        for option in options:
-            options_html += f'<option value="{option}">{option}</option>'
+        options_html = "".join([f'<option value="{option}">{option}</option>' for option in options])
         
-        help_html = f'<small style="color:#6c757d;display:block;margin-top:5px;">{help_text}</small>' if help_text else ""
-        
-        return f"""
-        <div style="margin-bottom:20px;">
-            <label style="display:block;margin-bottom:5px;font-weight:500;color:#495057;">{label}</label>
-            <select name="{name}" {required_attr} style="width:100%;padding:12px;border:2px solid #e9ecef;border-radius:6px;font-size:14px;font-family: inherit;">
-                <option value="">Select an option</option>
-                {options_html}
-            </select>
-            {help_html}
-        </div>
-        """
+        return self._create_field_html(
+            field_type="select",
+            name=name,
+            label=label,
+            required=required,
+            help_text=help_text,
+            options_html=options_html
+        )
     
-    def create_radio_field(self, name: str, label: Optional[str] = None, options: Optional[List[str]] = None, required: bool = False, help_text: Optional[str] = None) -> str:
-        """Create a radio button group"""
+    def create_checkbox_field(self, name: str, label: Optional[str] = None, options: Optional[List[str]] = None,
+                             required: bool = False, help_text: Optional[str] = None) -> str:
+        """Create a checkbox field"""
         self.field_count += 1
-        if not label:
-            label = name.replace('_', ' ').capitalize()
-        if options is None:
-            options = []
+        label = label or name.replace('_', ' ').capitalize()
+        # Ensure options is a list
+        if isinstance(options, str):
+            import ast
+            try:
+                options = ast.literal_eval(options)
+            except Exception:
+                options = [options]
+        options = options or []
         
-        # Always add "I don't know" option to help users who are unsure
-        if "I don't know" not in options and "I'm not sure" not in options:
-            options.append("I don't know")
-        
-        required_attr = "required" if required else ""
-        options_html = ""
+        checkboxes_html = ""
         for option in options:
-            options_html += f"""
-            <label style="display:flex;align-items:center;margin-bottom:10px;cursor:pointer;">
-                <input type="radio" name="{name}" value="{option}" {required_attr} style="margin-right:8px;">
-                <span>{option}</span>
-            </label>
-            """
-        
-        help_html = f'<small style="color:#6c757d;display:block;margin-top:5px;">{help_text}</small>' if help_text else ""
-        
-        return f"""
-        <div style="margin-bottom:20px;">
-            <label style="display:block;margin-bottom:10px;font-weight:500;color:#495057;">{label}</label>
-            <div style="margin-left:10px;">
-                {options_html}
-            </div>
-            {help_html}
-        </div>
-        """
-    
-    def create_checkbox_field(self, name: str, label: Optional[str] = None, options: Optional[List[str]] = None, required: bool = False, help_text: Optional[str] = None) -> str:
-        """Create a checkbox group"""
-        self.field_count += 1
-        if not label:
-            label = name.replace('_', ' ').capitalize()
-        if options is None:
-            options = []
-        
-        options_html = ""
-        has_other_option = False
-        
-        for option in options:
-            # Check if this is an "Other" option
-            if "other" in option.lower() or "please specify" in option.lower():
-                has_other_option = True
-                options_html += f"""
-                <label style="display:flex;align-items:center;margin-bottom:10px;cursor:pointer;">
-                    <input type="checkbox" name="{name}" value="{option}" style="margin-right:8px;" onchange="toggleOtherField(this, '{name}_other')">
+            checkboxes_html += f"""
+            <div style="margin-bottom:4px;">
+                <label style="display:flex;align-items:center;cursor:pointer;">
+                    <input type="checkbox" name="{name}" value="{option}" style="margin-right:6px;">
                     <span>{option}</span>
                 </label>
-                <div id="{name}_other" style="margin-left:20px;margin-bottom:10px;display:none;">
-                    <input type="text" name="{name}_other_text" placeholder="Please describe..." style="width:100%;padding:8px;border:2px solid #e9ecef;border-radius:6px;font-size:14px;font-family: inherit;">
-                </div>
-                """
-            else:
-                options_html += f"""
-                <label style="display:flex;align-items:center;margin-bottom:10px;cursor:pointer;">
-                    <input type="checkbox" name="{name}" value="{option}" style="margin-right:8px;">
-                    <span>{option}</span>
-                </label>
-                """
-        
-        help_html = f'<small style="color:#6c757d;display:block;margin-top:5px;">{help_text}</small>' if help_text else ""
-        
-        # Add JavaScript for "Other" field toggle if needed
-        js_code = ""
-        if has_other_option:
-            js_code = """
-            <script>
-            function toggleOtherField(checkbox, otherFieldId) {
-                const otherField = document.getElementById(otherFieldId);
-                if (checkbox.checked) {
-                    otherField.style.display = 'block';
-                } else {
-                    otherField.style.display = 'none';
-                    otherField.querySelector('input').value = '';
-                }
-            }
-            </script>
+            </div>
             """
         
-        return f"""
-        <div style="margin-bottom:20px;">
-            <label style="display:block;margin-bottom:10px;font-weight:500;color:#495057;">{label}</label>
-            <div style="margin-left:10px;">
-                {options_html}
-            </div>
-            {help_html}
-            {js_code}
-        </div>
-        """
-    
-    def create_number_field(self, name: str, label: Optional[str] = None, required: bool = False, min_value: Optional[float] = None, max_value: Optional[float] = None, help_text: Optional[str] = None) -> str:
-        """Create a number input field"""
-        self.field_count += 1
-        if not label:
-            label = name.replace('_', ' ').capitalize()
-        required_attr = "required" if required else ""
-        min_attr = f'min="{min_value}"' if min_value is not None else ""
-        max_attr = f'max="{max_value}"' if max_value is not None else ""
-        help_html = f'<small style="color:#6c757d;display:block;margin-top:5px;">{help_text}</small>' if help_text else ""
-        
-        return f"""
-        <div style="margin-bottom:20px;">
-            <label style="display:block;margin-bottom:5px;font-weight:500;color:#495057;">{label}</label>
-            <input type="number" name="{name}" {required_attr} {min_attr} {max_attr} style="width:100%;padding:12px;border:2px solid #e9ecef;border-radius:6px;font-size:14px;font-family: inherit;">
-            {help_html}
-        </div>
-        """
+        return self._create_field_html(
+            field_type="checkbox",
+            name=name,
+            label=label,
+            required=required,
+            help_text=help_text,
+            checkboxes_html=checkboxes_html
+        )
     
     def create_year_field(self, name: str, label: Optional[str] = None, required: bool = False, help_text: Optional[str] = None) -> str:
-        """Create a year input field with validation"""
-        if not label:
-            label = name.replace('_', ' ').capitalize()
-        return self.create_number_field(name, label, required, 1900, 2030, help_text)
-    
-    def create_budget_range_field(self, name: str, label: Optional[str] = None, required: bool = False, help_text: Optional[str] = None) -> str:
-        """Create a budget range field with min/max inputs"""
-        self.field_count += 1
-        if not label:
-            label = name.replace('_', ' ').capitalize()
-        help_html = f'<small style="color:#6c757d;display:block;margin-top:5px;">{help_text}</small>' if help_text else ""
-        
-        return f"""
-        <div style="margin-bottom:20px;">
-            <label style="display:block;margin-bottom:10px;font-weight:500;color:#495057;">{label}</label>
-            <div style="display:flex;gap:10px;align-items:center;">
-                <div style="flex:1;">
-                    <label style="display:block;margin-bottom:5px;font-size:12px;color:#6c757d;">Min ($)</label>
-                    <input type="number" name="{name}_min" min="0" step="10" style="width:100%;padding:8px;border:2px solid #e9ecef;border-radius:6px;font-size:14px;font-family: inherit;">
-                </div>
-                <div style="flex:1;">
-                    <label style="display:block;margin-bottom:5px;font-size:12px;color:#6c757d;">Max ($)</label>
-                    <input type="number" name="{name}_max" min="0" step="10" style="width:100%;padding:8px;border:2px solid #e9ecef;border-radius:6px;font-size:14px;font-family: inherit;">
-                </div>
-            </div>
-            {help_html}
-        </div>
-        """
-    
-    def create_mileage_range_field(self, name: str, label: Optional[str] = None, required: bool = False, help_text: Optional[str] = None) -> str:
-        """Create a mileage range field with min/max inputs"""
-        self.field_count += 1
-        if not label:
-            label = name.replace('_', ' ').capitalize()
-        help_html = f'<small style="color:#6c757d;display:block;margin-top:5px;">{help_text}</small>' if help_text else ""
-        
-        return f"""
-        <div style="margin-bottom:20px;">
-            <label style="display:block;margin-bottom:10px;font-weight:500;color:#495057;">{label}</label>
-            <div style="display:flex;gap:10px;align-items:center;">
-                <div style="flex:1;">
-                    <label style="display:block;margin-bottom:5px;font-size:12px;color:#6c757d;">Min (miles)</label>
-                    <input type="number" name="{name}_min" min="0" step="5" style="width:100%;padding:8px;border:2px solid #e9ecef;border-radius:6px;font-size:14px;font-family: inherit;">
-                </div>
-                <div style="flex:1;">
-                    <label style="display:block;margin-bottom:5px;font-size:12px;color:#6c757d;">Max (miles)</label>
-                    <input type="number" name="{name}_max" min="0" step="5" style="width:100%;padding:8px;border:2px solid #e9ecef;border-radius:6px;font-size:14px;font-family: inherit;">
-                </div>
-            </div>
-            {help_html}
-        </div>
-        """
+        """Create a year input field"""
+        return self.create_text_field(
+            name=name,
+            label=label or "Year",
+            required=required,
+            placeholder="e.g., 2020",
+            help_text=help_text or "Enter the year of your vehicle"
+        )
     
     def create_complete_form(self, fields_html: List[str], conversation_text: str = "", submit_text: str = "Continue") -> str:
-        """Create a complete form with conversation text and submit button. Always append an 'Additional Thoughts' free-text field at the end."""
-        # Safety check: Ensure fields_html is a list
-        if not isinstance(fields_html, list):
-            fields_html = [str(fields_html)] if fields_html else []
+        """Create a complete form with all fields"""
+        fields_content = "".join(fields_html)
         
-        # Always add the free-text field at the end (create directly to avoid safety check)
-        additional_notes_field = f"""
-        <div style="margin-bottom:20px;">
-            <label style="display:block;margin-bottom:5px;font-weight:500;color:#495057;">Confused? Need help?</label>
-            <textarea name="additional_notes" placeholder="Ask a question, add details, or tell me anything..." rows="3" style="width:100%;padding:12px;border:2px solid #e9ecef;border-radius:6px;font-size:14px;resize:vertical;font-family: inherit;"></textarea>
-        </div>
-        """
-        
-        # Ensure we don't duplicate the additional_notes field if it already exists
-        existing_additional_notes = any('name="additional_notes"' in field for field in fields_html)
-        if existing_additional_notes:
-            fields_combined = "\n".join(fields_html)
-        else:
-            fields_combined = "\n".join(fields_html + [additional_notes_field])
-        
-        # Format conversation text with proper paragraphs and text formatting
-        formatted_conversation = ""
-        if conversation_text and conversation_text.strip():
-            formatted_conversation = f'<div style="margin-bottom:20px;">{self._format_conversation_text(conversation_text)}</div>'
+        # Add additional notes field automatically
+        additional_notes = self.create_textarea_field(
+            name="additional_notes",
+            label="Additional Thoughts (Optional)",
+            required=False,
+            placeholder="Ask a question, add details, or tell me anything..."
+        )
         
         return f"""
-        <div style="background:white;padding:25px;border-radius:12px;margin-bottom:25px;border:1px solid #e1e5e9;font-size:16px;line-height:1.6;">
-            {formatted_conversation}
-            <form class="living-form" style="background:#f8f9fa;padding:20px;border-radius:8px;border:1px solid #e9ecef;">
-                {fields_combined}
-                <button type="submit" style="background:#667eea;color:white;border:none;padding:12px 30px;border-radius:6px;font-size:16px;cursor:pointer;transition:background-color 0.3s ease;">
+        <div style="background:#f8f9fa;padding:15px;border-radius:8px;margin:15px 0;">
+            {self._format_conversation_text(conversation_text)}
+            <form id="tire-form" style="margin-top:10px;">
+                {fields_content}
+                {additional_notes}
+                <button type="submit" style="background:#007bff;color:white;padding:10px 20px;border:none;border-radius:6px;cursor:pointer;font-size:16px;">
                     {submit_text}
                 </button>
             </form>
         </div>
         """
-
-    def _format_conversation_text(self, text: str) -> str:
-        """Format conversation text with simple text formatting (same as frontend)"""
-        import html
+    
+    def create_embedded_form(self, conversation_with_fields: str, submit_text: str = "Continue") -> str:
+        """Create a form with conversation text and form fields embedded within it"""
         import re
         
-        # Escape HTML first
-        formatted = html.escape(text)
+        # Add additional notes field automatically
+        additional_notes = self.create_textarea_field(
+            name="additional_notes",
+            label="Additional Thoughts (Optional)",
+            required=False,
+            placeholder="Ask a question, add details, or tell me anything..."
+        )
         
-        # Process formatting BEFORE converting line breaks to <br> tags
-        # Convert ### headers to <h3>
-        formatted = re.sub(r'^### (.*?)$', r'__HEADER_START__\1__HEADER_END__', formatted, flags=re.MULTILINE)
+
         
-        # Convert numbered lists (1. item)
-        formatted = re.sub(r'^(\d+)\. (.*?)$', r'__LIST_START__\1__LIST_MID__\2__LIST_END__', formatted, flags=re.MULTILINE)
+        # Replace all function calls in the conversation text (handling nested braces)
+        def find_function_calls(text):
+            """Find function calls with proper brace matching"""
+            import re
+            # Find all {create_...} patterns
+            pattern = r'\{create_\w+\([^}]*\)\}'
+            matches = re.finditer(pattern, text, re.DOTALL)
+            return matches
         
-        # Convert bullet points (- item)
-        formatted = re.sub(r'^- (.*?)$', r'__BULLET_START__\1__BULLET_END__', formatted, flags=re.MULTILINE)
+        # Process each function call
+        processed_content = conversation_with_fields
+        for match in find_function_calls(conversation_with_fields):
+            function_call = match.group(0)
+            # Remove the outer braces
+            function_content = function_call[1:-1]
+            try:
+                # Extract function name and arguments
+                func_match = re.match(r'(\w+)\((.*)\)', function_content, re.DOTALL)
+                if func_match:
+                    func_name = func_match.group(1)
+                    args_str = func_match.group(2)
+                    # Call the function to generate the field HTML
+                    field_html = self.call_function(func_name, args_str)
+                    processed_content = processed_content.replace(function_call, field_html)
+            except Exception as e:
+                logger.error(f"Error processing function call {function_call}: {str(e)}")
+                processed_content = processed_content.replace(function_call, f"<span style='color:red;'>Error: {function_call}</span>")
         
-        # Convert **bold** to <strong>
-        formatted = re.sub(r'\*\*(.*?)\*\*', r'<strong>\1</strong>', formatted)
+        # Clean up the text formatting - preserve line breaks and bullet points
+        processed_content = processed_content.replace('\n', '<br>')
+        processed_content = processed_content.replace('•', '• ')
         
-        # Convert code blocks (`code`)
-        formatted = re.sub(r'`(.*?)`', r'<code style="background:#f8f9fa;padding:2px 6px;border-radius:4px;font-family:monospace;font-size:0.9em;">\1</code>', formatted)
+        return f"""
+        <div style="background:#f8f9fa;padding:15px;border-radius:8px;margin:15px 0;">
+            <form id="tire-form">
+                <div style="background:white;padding:12px;border-radius:6px;margin-bottom:10px;border-left:4px solid #007bff;">
+                    <div style="margin:0;color:#495057;line-height:1.4;">{processed_content}</div>
+                </div>
+                {additional_notes}
+                <button type="submit" style="background:#007bff;color:white;padding:10px 20px;border:none;border-radius:6px;cursor:pointer;font-size:16px;">
+                    {submit_text}
+                </button>
+            </form>
+        </div>
+        """
+    
+    def _create_field_html(self, field_type: str, name: str, label: str, required: bool = False,
+                          placeholder: Optional[str] = None, help_text: Optional[str] = None,
+                          **kwargs) -> str:
+        """Create HTML for any field type"""
+        required_attr = "required" if required else ""
+        placeholder_attr = f'placeholder="{placeholder}"' if placeholder else ""
+        help_html = f'<small style="color:#6c757d;display:block;margin-top:3px;">{help_text}</small>' if help_text else ""
         
-        # Now convert line breaks to <br> tags
-        formatted = formatted.replace('\n', '<br>')
+        if field_type == "text":
+            input_html = f'<input type="text" name="{name}" {required_attr} {placeholder_attr} style="width:100%;padding:12px;border:2px solid #e9ecef;border-radius:6px;font-size:14px;font-family: inherit;">'
+        elif field_type == "textarea":
+            rows = kwargs.get('rows', 3)
+            input_html = f'<textarea name="{name}" {required_attr} {placeholder_attr} rows="{rows}" style="width:100%;padding:12px;border:2px solid #e9ecef;border-radius:6px;font-size:14px;resize:vertical;font-family: inherit;"></textarea>'
+        elif field_type == "select":
+            options_html = kwargs.get('options_html', '')
+            input_html = f'<select name="{name}" {required_attr} style="width:100%;padding:12px;border:2px solid #e9ecef;border-radius:6px;font-size:14px;font-family: inherit;"><option value="">Select an option</option>{options_html}</select>'
+        elif field_type == "checkbox":
+            checkboxes_html = kwargs.get('checkboxes_html', '')
+            input_html = checkboxes_html
+        else:
+            input_html = ""
         
-        # Replace placeholders with actual HTML
-        formatted = re.sub(r'__HEADER_START__(.*?)__HEADER_END__', r'</p><h3 style="color:#667eea;margin:15px 0 10px 0;font-size:18px;">\1</h3><p style="margin-bottom:12px;">', formatted)
-        formatted = re.sub(r'__LIST_START__(.*?)__LIST_MID__(.*?)__LIST_END__', r'</p><div style="margin:8px 0;"><strong>\1.</strong> \2</div><p style="margin-bottom:12px;">', formatted)
-        formatted = re.sub(r'__BULLET_START__(.*?)__BULLET_END__', r'</p><div style="margin:8px 0;margin-left:15px;">• \1</div><p style="margin-bottom:12px;">', formatted)
+        return f"""
+        <div style="margin-bottom:5px;display:inline-block;width:100%;">
+            <label style="display:block;margin-bottom:2px;font-weight:500;color:#495057;">{label}</label>
+            {input_html}
+            {help_html}
+        </div>
+        """
+    
+    def _get_default_placeholder(self, name: str) -> str:
+        """Get default placeholder based on field name"""
+        field_name = name.lower()
+        placeholders = {
+            'make': "e.g., Honda, Toyota, Ford, Kia, Hyundai",
+            'model': "e.g., Accord, Camry, F-150, Forte, Sonata",
+            'year': "e.g., 2015, 2020, 2023",
+            'size': "e.g., 205/55R16, 225/45R17",
+            'tire': "e.g., 205/55R16, 225/45R17",
+            'mileage': "e.g., 15,000, 50,000",
+            'vin': "17-character VIN from dashboard or registration"
+        }
         
-        # Add paragraph breaks for double line breaks
-        formatted = re.sub(r'(<br>){2,}', r'</p><p style="margin-bottom:12px;">', formatted)
+        for key, placeholder in placeholders.items():
+            if key in field_name:
+                return placeholder
         
-        # Wrap in paragraph tags
-        formatted = f'<p style="margin-bottom:12px;">{formatted}</p>'
+        return "Enter your answer here"
+    
+    def _format_conversation_text(self, text: str) -> str:
+        """Format conversation text for display"""
+        if not text:
+            return ""
         
-        # Clean up any empty paragraphs or malformed HTML
-        formatted = re.sub(r'<p[^>]*>\s*</p>', '', formatted)  # Remove empty paragraphs
-        formatted = re.sub(r'</p>\s*<p[^>]*>', '</p><p style="margin-bottom:12px;">', formatted)  # Normalize paragraph tags
+        # Preserve line breaks by converting them to <br> tags
+        formatted_text = text.replace('\n', '<br>')
         
-        return formatted
+        return f"""
+        <div style="background:white;padding:12px;border-radius:6px;margin-bottom:10px;border-left:4px solid #007bff;">
+            <div style="margin:0;color:#495057;line-height:1.4;">{formatted_text}</div>
+        </div>
+        """
     
     def call_function(self, func_name: str, args_str: str) -> str:
-        """Call a form builder function by name with arguments"""
+        """Call a form builder function with parsed arguments"""
         try:
-            # Parse the arguments string
             args = self._parse_function_args(args_str)
             
-            # Get the function
-            if hasattr(self, func_name):
-                func = getattr(self, func_name)
-                
-                # Special handling for select fields without options
-                if func_name == "create_select_field" and (not args.get("options") or len(args.get("options", [])) == 0):
-                    field_name = args.get('name', 'unknown').lower()
-                    logger.warning(f"Select field '{field_name}' created without options, using context-aware defaults")
-                    
-                    # Provide context-aware default options based on field name
-                    if 'driving' in field_name or 'pattern' in field_name:
-                        args["options"] = ["Daily commute", "Highway driving", "Weekend trips", "Long road trips", "Sporty driving"]
-                    elif 'budget' in field_name:
-                        args["options"] = ["Budget ($50-100 per tire)", "Mid-range ($100-200 per tire)", "Premium ($200+ per tire)"]
-                    elif 'weather' in field_name or 'climate' in field_name:
-                        args["options"] = ["Mostly dry", "Rainy", "Snowy winters", "Mixed conditions"]
-                    elif 'usage' in field_name or 'purpose' in field_name:
-                        args["options"] = ["Personal use", "Family car", "Work vehicle", "Recreational"]
-                    elif 'priority' in field_name:
-                        args["options"] = ["Performance", "Comfort", "Longevity", "Price", "Safety"]
-                    else:
-                        args["options"] = ["Option A", "Option B", "Option C", "Other"]
-                
-                return func(**args)
+            # Validate the function call
+            validation_errors = self.validate_function_call(func_name, args)
+            
+            # Log validation results
+            if validation_errors:
+                logger.warning(f"Validation errors for {func_name}: {validation_errors}")
+                # Try to fix common issues
+                args = self._fix_common_issues(func_name, args)
+            
+            # Call the appropriate function
+            if func_name == "create_text_field":
+                return self.create_text_field(**args)
+            elif func_name == "create_textarea_field":
+                return self.create_textarea_field(**args)
+            elif func_name == "create_select_field":
+                return self.create_select_field(**args)
+            elif func_name == "create_checkbox_field":
+                return self.create_checkbox_field(**args)
+            elif func_name == "create_year_field":
+                return self.create_year_field(**args)
             else:
-                logger.error(f"Unknown function: {func_name}")
-                return f"<p>Error: Unknown function {func_name}</p>"
+                logger.warning(f"Unknown function: {func_name}")
+                return ""
                 
         except Exception as e:
             logger.error(f"Error calling function {func_name}: {str(e)}")
-            return f"<p>Error: {str(e)}</p>"
+            # Return a fallback form field
+            return self._create_fallback_field(func_name, args_str)
+    
+    def _fix_common_issues(self, func_name: str, args: Dict[str, Any]) -> Dict[str, Any]:
+        """Fix common issues with function arguments"""
+        fixed_args = args.copy()
+        
+        # Fix missing options for select/checkbox fields
+        if func_name in ['create_select_field', 'create_checkbox_field']:
+            if 'options' not in fixed_args or not fixed_args['options']:
+                logger.info(f"Adding default options for {func_name}")
+                fixed_args['options'] = ["Option 1", "Option 2", "I don't know"]
+        
+        # Fix missing name
+        if 'name' not in fixed_args:
+            logger.info(f"Adding default name for {func_name}")
+            fixed_args['name'] = f"field_{self.field_count}"
+        
+        # Fix missing label
+        if 'label' not in fixed_args:
+            logger.info(f"Adding default label for {func_name}")
+            fixed_args['label'] = fixed_args.get('name', 'Field').replace('_', ' ').capitalize()
+        
+        # Fix boolean values
+        if 'required' in fixed_args and not isinstance(fixed_args['required'], bool):
+            try:
+                fixed_args['required'] = bool(fixed_args['required'])
+            except:
+                fixed_args['required'] = False
+        
+        # Fix integer values
+        if 'rows' in fixed_args and not isinstance(fixed_args['rows'], int):
+            try:
+                fixed_args['rows'] = int(fixed_args['rows'])
+            except:
+                fixed_args['rows'] = 3
+        
+        return fixed_args
+    
+    def _create_fallback_field(self, func_name: str, args_str: str) -> str:
+        """Create a fallback form field when function call fails"""
+        logger.warning(f"Creating fallback field for failed {func_name}")
+        
+        # Extract basic info from args_str if possible
+        import re
+        name_match = re.search(r'name\s*=\s*["\']([^"\']+)["\']', args_str)
+        label_match = re.search(r'label\s*=\s*["\']([^"\']+)["\']', args_str)
+        
+        name = name_match.group(1) if name_match else f"fallback_{self.field_count}"
+        label = label_match.group(1) if label_match else "Please provide information"
+        
+        # Create a simple text field as fallback
+        return self.create_text_field(
+            name=name,
+            label=label,
+            required=False,
+            placeholder="Please enter your information here",
+            help_text="This field was created due to a processing error. Please provide your information."
+        )
     
     def _parse_function_args(self, args_str: str) -> Dict[str, Any]:
-        """Parse function arguments from string format"""
+        """Parse function arguments from string, robustly handling lists, dicts, numbers, booleans, and quoted strings for any argument."""
+        args = {}
+        import re
         import ast
+        
+        # Debug logging
+        logger.debug(f"Parsing function args: {args_str[:200]}...")
+        
+        # First, handle options list specially since it's the most complex
+        options_match = re.search(r'options\s*=\s*(\[[^\]]*\])', args_str, re.DOTALL)
+        if options_match:
+            options_raw = options_match.group(1)
+            logger.debug(f"Found options raw: {options_raw}")
+            try:
+                options = ast.literal_eval(options_raw)
+                args['options'] = options
+                logger.debug(f"Successfully parsed options: {options}")
+                # Remove options from args_str so it doesn't get double-parsed
+                args_str = re.sub(r'options\s*=\s*\[[^\]]*\]', '', args_str, flags=re.DOTALL)
+            except Exception as e:
+                logger.warning(f"Error parsing options list with ast.literal_eval: {e}")
+                # Fallback: try manual parsing
+                options = self._safe_parse_options(options_raw)
+                args['options'] = options
+                logger.debug(f"Fallback parsed options: {options}")
+        
+        # Now parse remaining arguments
+        # Find all key=value pairs (including lists, dicts, numbers, booleans, quoted strings)
+        matches = re.findall(r'(\w+)\s*=\s*("[^"]*"|\'[^\']*\'|\[[^\]]*\]|\{[^\}]*\}|[^\s,]+)', args_str)
+        for key, value in matches:
+            if key == 'options':  # Skip options as we already handled it
+                continue
+            value = value.strip()
+            # Try to parse as a Python literal
+            try:
+                parsed_value = ast.literal_eval(value)
+                args[key] = parsed_value
+                logger.debug(f"Parsed {key}: {parsed_value}")
+            except Exception:
+                # Fallback: treat as string, strip quotes if present
+                if (value.startswith('"') and value.endswith('"')) or (value.startswith("'") and value.endswith("'")):
+                    args[key] = value[1:-1]
+                else:
+                    args[key] = value
+                logger.debug(f"Fallback parsed {key}: {args[key]}")
+        
+        logger.debug(f"Final parsed args: {args}")
+        return args
+    
+    def _safe_parse_options(self, options_str: str) -> List[str]:
+        """Safely parse options with multiple fallback strategies"""
         import re
         
+        # Remove outer brackets
+        options_str = options_str.strip()
+        if options_str.startswith('[') and options_str.endswith(']'):
+            options_str = options_str[1:-1]
+        
+        # Strategy 1: Split by comma, but be smart about quoted strings
         try:
-            # Handle different argument formats
-            if args_str.strip().startswith('{') and args_str.strip().endswith('}'):
-                # JSON-like format
-                args_str = args_str.replace("'", '"')
-                import json
-                return json.loads(args_str)
-            else:
-                # Parse keyword arguments in format: name="value", label="value", required=True
-                args = {}
-                
-                # Special handling for arrays - look for options=["item1", "item2", "item3"]
-                # Also handle incomplete arrays that might be missing the closing bracket
-                options_match = re.search(r'options\s*=\s*\[(.*?)\]', args_str, re.DOTALL)
-                if not options_match:
-                    # Try to find incomplete options array
-                    options_match = re.search(r'options\s*=\s*\[(.*?)(?=\n\s*\w+\s*=|$)', args_str, re.DOTALL)
-                
-                if options_match:
-                    options_content = options_match.group(1)
-                    # Parse the options array - handle multi-line and quoted strings
-                    options = []
-                    
-                    # Split by commas, but be careful about commas inside quotes
-                    import shlex
-                    try:
-                        # Use shlex to properly handle quoted strings
-                        lexer = shlex.shlex(options_content, posix=True)
-                        lexer.quotes = '"'  # Only handle double quotes
-                        lexer.whitespace = ',\n\r\t '  # Split on commas and whitespace
-                        lexer.whitespace_split = True
-                        
-                        for token in lexer:
-                            token = token.strip().strip('"\'')
-                            if token and token not in ['[', ']', ',']:
-                                options.append(token)
-                    except:
-                        # Fallback: simple parsing
-                        current_option = ""
-                        in_quotes = False
-                        quote_char = None
-                        
-                        for char in options_content:
-                            if char in ['"', "'"] and not in_quotes:
-                                in_quotes = True
-                                quote_char = char
-                            elif char == quote_char and in_quotes:
-                                in_quotes = False
-                                quote_char = None
-                            elif char == ',' and not in_quotes:
-                                if current_option.strip():
-                                    options.append(current_option.strip().strip('"\''))
-                                    current_option = ""
-                            else:
-                                current_option += char
-                        
-                        # Add the last option
-                        if current_option.strip():
-                            options.append(current_option.strip().strip('"\''))
-                    
-                    args["options"] = options
-                    
-                    # Remove the options part from args_str for further parsing
-                    args_str = re.sub(r'options\s*=\s*\[.*?\],?\s*', '', args_str, flags=re.DOTALL)
-                
-                # Pattern to match remaining keyword arguments
-                # This handles: name="value", label="value", required=True
-                pattern = r'(\w+)\s*=\s*(?:"([^"]*)"|\'([^\']*)\'|(\w+))'
-                matches = re.findall(pattern, args_str)
-                
-                for match in matches:
-                    key = match[0]
-                    # Check which group has the value
-                    if match[1]:  # Double quoted string
-                        value = match[1]
-                    elif match[2]:  # Single quoted string
-                        value = match[2]
-                    elif match[3]:  # Boolean or number
-                        if match[3].lower() == 'true':
-                            value = True
-                        elif match[3].lower() == 'false':
-                            value = False
-                        else:
-                            try:
-                                value = int(match[3])
-                            except ValueError:
-                                value = match[3]
-                    else:
-                        continue
-                    
-                    args[key] = value
-                
-                if args:
-                    return args
-                
-                # Fallback: try ast.literal_eval
-                try:
-                    return ast.literal_eval(f"{{{args_str}}}")
-                except:
-                    # Final fallback: treat as a single string argument
-                    return {"name": "field", "label": args_str.strip()}
-                        
+            # This regex splits by comma but respects quoted strings
+            pattern = r'"[^"]*"|\'[^\']*\'|[^,]+'
+            matches = re.findall(pattern, options_str)
+            options = []
+            for match in matches:
+                match = match.strip()
+                # Remove quotes if present
+                if (match.startswith('"') and match.endswith('"')) or (match.startswith("'") and match.endswith("'")):
+                    match = match[1:-1]
+                if match:
+                    options.append(match)
+            
+            if options:
+                logger.debug(f"Manual parsing successful: {options}")
+                return options
         except Exception as e:
-            logger.error(f"Error parsing function args '{args_str}': {str(e)}")
-            return {"name": "field", "label": args_str.strip()}
+            logger.warning(f"Manual parsing failed: {e}")
+        
+        # Strategy 2: Simple comma split (fallback)
+        try:
+            options = [opt.strip().strip('"').strip("'") for opt in options_str.split(',') if opt.strip()]
+            if options:
+                logger.debug(f"Simple comma split successful: {options}")
+                return options
+        except Exception as e:
+            logger.warning(f"Simple comma split failed: {e}")
+        
+        # Strategy 3: Treat entire string as single option
+        logger.warning(f"All parsing strategies failed, treating as single option: {options_str}")
+        return [options_str.strip().strip('"').strip("'")]
+    
+    def validate_function_call(self, func_name: str, args: Dict[str, Any]) -> List[str]:
+        """Validate function call and return error messages"""
+        errors = []
+        
+        # Check for required parameters
+        if 'name' not in args:
+            errors.append(f"{func_name} requires 'name' parameter")
+        
+        # Check for options in select/checkbox fields
+        if func_name in ['create_select_field', 'create_checkbox_field']:
+            if 'options' not in args:
+                errors.append(f"{func_name} requires 'options' parameter")
+            elif not args['options'] or (isinstance(args['options'], list) and len(args['options']) == 0):
+                errors.append(f"{func_name} requires non-empty 'options' parameter")
+        
+        # Check for valid boolean values
+        if 'required' in args and not isinstance(args['required'], bool):
+            try:
+                args['required'] = bool(args['required'])
+            except:
+                errors.append(f"{func_name} 'required' parameter must be boolean")
+        
+        # Check for valid integer values
+        if 'rows' in args and not isinstance(args['rows'], int):
+            try:
+                args['rows'] = int(args['rows'])
+            except:
+                errors.append(f"{func_name} 'rows' parameter must be integer")
+        
+        if errors:
+            logger.warning(f"Validation errors for {func_name}: {errors}")
+        
+        return errors
     
     def reset_field_count(self):
-        """Reset the field counter"""
+        """Reset field counter"""
         self.field_count = 0 

@@ -12,12 +12,12 @@ from dataclasses import dataclass, replace
 logger = logging.getLogger(__name__)
 
 @dataclass(frozen=True)
-class SimpleConversationState:
+class ConversationState:
     """
     Simple conversation state for dual agent system
     """
     session_id: str
-    current_agent: str = "ComprehensiveTireAgent"
+    current_agent: str = "UnifiedTireAgent"
     conversation_data: Dict[str, Any] = None
     session_start_time: datetime = None
     last_updated: datetime = None
@@ -34,32 +34,32 @@ class SimpleConversationState:
         """Create new state with updates"""
         return replace(self, **kwargs, last_updated=datetime.now())
 
-class SimpleStateManager:
+class StateManager:
     """
     Simple state manager for dual agent system
     """
     
     def __init__(self):
-        self._state: Optional[SimpleConversationState] = None
+        self._state: Optional[ConversationState] = None
         self._lock = asyncio.Lock()
-        logger.info("SimpleStateManager initialized")
+        logger.info("StateManager initialized")
     
-    async def initialize_session(self, session_id: str) -> SimpleConversationState:
+    async def initialize_session(self, session_id: str) -> ConversationState:
         """Initialize a new session state"""
         async with self._lock:
-            self._state = SimpleConversationState(
+            self._state = ConversationState(
                 session_id=session_id,
-                current_agent="ComprehensiveTireAgent"
+                current_agent="UnifiedTireAgent"
             )
             logger.info(f"Initialized new session state: {session_id}")
             return self._state
     
-    async def get_state(self) -> Optional[SimpleConversationState]:
+    async def get_state(self) -> Optional[ConversationState]:
         """Get current state"""
         async with self._lock:
             return self._state
     
-    async def update_state(self, **kwargs) -> SimpleConversationState:
+    async def update_state(self, **kwargs) -> ConversationState:
         """Update state"""
         async with self._lock:
             if self._state is None:
@@ -69,7 +69,7 @@ class SimpleStateManager:
             logger.info(f"State updated: {list(kwargs.keys())}")
             return self._state
     
-    async def update_conversation_data(self, key: str, value: Any) -> SimpleConversationState:
+    async def update_conversation_data(self, key: str, value: Any) -> ConversationState:
         """Update conversation data"""
         async with self._lock:
             if self._state is None:

@@ -892,45 +892,20 @@
                     <div class="living-form" style="background:#f8f9fa;border:2px solid #e9ecef;border-radius:12px;padding:20px;margin-top:15px;">
                         <form id="initial-form" data-form-type="initial" action="javascript:void(0);" method="post">
                             <div style="margin-bottom:20px;">
-                                <label style="display:block;margin-bottom:10px;font-weight:500;color:#495057;font-size:16px;">How would you like to provide your vehicle information?</label>
+                                <label style="display:block;margin-bottom:10px;font-weight:500;color:#495057;font-size:16px;">How can I help you today?</label>
                                 <div style="margin-left:10px;">
-                                    <label style="display:flex;align-items:center;margin-bottom:15px;cursor:pointer;padding:10px;border-radius:8px;transition:background-color 0.2s;">
-                                        <input type="radio" name="info_method" value="tire_size" style="margin-right:12px;transform:scale(1.2);">
-                                        <div>
-                                            <span style="font-weight:500;color:#333;">I know my tire size</span>
-                                            <div style="font-size:13px;color:#666;margin-top:2px;">I have the tire size (like 225/60R16) from my current tires</div>
-                                        </div>
-                                    </label>
-                                    
-                                    <label style="display:flex;align-items:center;margin-bottom:15px;cursor:pointer;padding:10px;border-radius:8px;transition:background-color 0.2s;">
-                                        <input type="radio" name="info_method" value="make_model_year" style="margin-right:12px;transform:scale(1.2);">
-                                        <div>
-                                            <span style="font-weight:500;color:#333;">I know my vehicle details</span>
-                                            <div style="font-size:13px;color:#666;margin-top:2px;">I have the make, model, year, and submodel of my vehicle</div>
-                                        </div>
-                                    </label>
-                                    
-                                    <label style="display:flex;align-items:center;margin-bottom:15px;cursor:pointer;padding:10px;border-radius:8px;transition:background-color 0.2s;">
-                                        <input type="radio" name="info_method" value="vin" style="margin-right:12px;transform:scale(1.2);">
-                                        <div>
-                                            <span style="font-weight:500;color:#333;">I have my VIN number</span>
-                                            <div style="font-size:13px;color:#666;margin-top:2px;">I can find my Vehicle Identification Number (17 characters)</div>
-                                        </div>
-                                    </label>
-                                    
-                                    <label style="display:flex;align-items:center;margin-bottom:15px;cursor:pointer;padding:10px;border-radius:8px;transition:background-color 0.2s;">
-                                        <input type="radio" name="info_method" value="not_sure" style="margin-right:12px;transform:scale(1.2);">
-                                        <div>
-                                            <span style="font-weight:500;color:#333;">I'm not sure, help me figure this out</span>
-                                            <div style="font-size:13px;color:#666;margin-top:2px;">I need help determining what information I have or how to find it</div>
-                                        </div>
-                                    </label>
+                                    <textarea 
+                                        name="user_request" 
+                                        placeholder="e.g., 'I need a replacement tire for my car' or 'I'm looking for some tire recommendations for the snow'"
+                                        style="width:100%;min-height:80px;padding:12px;border:1px solid #ddd;border-radius:8px;font-size:14px;font-family:inherit;resize:vertical;"
+                                        required
+                                    ></textarea>
                                 </div>
                             </div>
                             
                             <div class="form-actions" style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px;padding-top:15px;border-top:1px solid #e9ecef;">
                                 <button type="submit" class="btn-primary" style="background:#667eea;color:white;border:none;padding:12px 24px;border-radius:8px;font-size:14px;font-weight:500;cursor:pointer;transition:background-color 0.3s ease;" onclick="console.log('Button clicked!');">
-                                    Continue with Tire Search
+                                    Get Started
                                 </button>
                             </div>
                         </form>
@@ -970,48 +945,22 @@
                 });
                 
                 // Enhanced context for the first form
-                if (form.id === 'initial-form' && formObject.info_method) {
-                    const methodContext = {
-                        'tire_size': {
-                            label: 'I know my tire size',
-                            description: 'I have the tire size (like 225/60R16) from my current tires',
-                            context: 'User has tire size information ready'
-                        },
-                        'make_model_year': {
-                            label: 'I know my vehicle details',
-                            description: 'I have the make, model, year, and submodel of my vehicle',
-                            context: 'User has vehicle information ready'
-                        },
-                        'vin': {
-                            label: 'I have my VIN number',
-                            description: 'I can find my Vehicle Identification Number (17 characters)',
-                            context: 'User has VIN number ready'
-                        },
-                        'not_sure': {
-                            label: 'I\'m not sure, help me figure this out',
-                            description: 'I need help determining what information I have or how to find it',
-                            context: 'User needs guidance on finding vehicle information'
-                        }
+                if (form.id === 'initial-form' && formObject.user_request) {
+                    formObject['_context'] = {
+                        'selected_label': 'User request',
+                        'selected_description': formObject.user_request,
+                        'user_context': 'User provided initial request',
+                        'is_initial_form': true
                     };
-                    
-                    const selectedMethod = methodContext[formObject.info_method];
-                    if (selectedMethod) {
-                        formObject['_context'] = {
-                            'selected_label': selectedMethod.label,
-                            'selected_description': selectedMethod.description,
-                            'user_context': selectedMethod.context,
-                            'is_initial_form': true
-                        };
-                    }
                 }
                 
                 console.log('Form data being submitted:', formObject);
                 console.log('Has any input:', hasAnyInput);
                 
-                // Check if user selected an option for initial form
-                if (form.id === 'initial-form' && !formObject.info_method) {
-                    console.log('No option selected for initial form');
-                    alert('Please select an option before continuing.');
+                // Check if user provided a request for initial form
+                if (form.id === 'initial-form' && !formObject.user_request) {
+                    console.log('No request provided for initial form');
+                    alert('Please tell us how we can help you today.');
                     form.dataset.submitting = 'false';
                     return;
                 }

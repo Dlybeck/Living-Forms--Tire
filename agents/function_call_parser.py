@@ -21,6 +21,10 @@ class FunctionCallParser:
         Returns:
             Tuple of (conversation_text, form_html)
         """
+        # Print the full unparsed AI response for debugging
+        print("\n=== RAW AI RESPONSE (UNPARSED) ===")
+        print(ai_response)
+        print("=== END RAW AI RESPONSE ===\n")
         # Reset the form builder for this response
         self.form_builder.reset_field_count()
         
@@ -29,31 +33,69 @@ class FunctionCallParser:
         
         if not function_calls:
             # No function calls found, return just the conversation text
+            logger.info("No function calls found in AI response")
             return ai_response.strip(), None
         
         # Execute function calls to generate form fields
         form_fields = []
+        successful_calls = 0
+        failed_calls = 0
+        
         for func_name, args_str in function_calls:
             try:
                 field_html = self.form_builder.call_function(func_name, args_str)
-                form_fields.append(field_html)
-                logger.info(f"Successfully executed function call: {func_name}({args_str[:100]}...)")
+                if field_html:
+                    form_fields.append(field_html)
+                    successful_calls += 1
+                    logger.info(f"Successfully executed function call: {func_name}({args_str[:100]}...)")
+                else:
+                    failed_calls += 1
+                    logger.warning(f"Function call returned empty result: {func_name}({args_str[:100]}...)")
             except Exception as e:
+                failed_calls += 1
                 logger.error(f"Error executing function call {func_name}({args_str}): {str(e)}")
                 # Continue with other function calls even if one fails
+        
+        # Log execution summary
+        logger.info(f"Function call execution summary: {successful_calls} successful, {failed_calls} failed")
         
         # Extract conversation text (everything before the first function call)
         conversation_text = self._extract_conversation_text(ai_response, function_calls)
         
         # Generate complete form if we have fields
         if form_fields:
-            form_html = self.form_builder.create_complete_form(form_fields, conversation_text)
+            print(f"\n=== FORM GENERATION SUCCESS ===")
+            print(f"Generated {len(form_fields)} form fields")
+            for i, field in enumerate(form_fields):
+                # Extract field name from HTML for debugging
+                import re
+                name_match = re.search(r'name="([^"]*)"', field)
+                field_name = name_match.group(1) if name_match else "unknown"
+                label_match = re.search(r'<label[^>]*>([^<]*)</label>', field)
+                field_label = label_match.group(1) if label_match else "unknown"
+                print(f"Field {i+1}: {field_name} - {field_label}")
+            
+            # Check if conversation text contains embedded function calls
+            if re.search(r'\{[^}]+\}', conversation_text):
+                # Use embedded form method
+                form_html = self.form_builder.create_embedded_form(conversation_text)
+                print(f"Embedded form HTML generated successfully")
+            else:
+                # Use traditional form method
+                form_html = self.form_builder.create_complete_form(form_fields, conversation_text)
+                print(f"Traditional form HTML generated successfully")
+            
+            print(f"=== END FORM GENERATION ===\n")
             return conversation_text, form_html  # Return conversation text AND form HTML
         else:
+            print(f"\n=== NO FORM FIELDS GENERATED ===")
+            print(f"Form fields list is empty")
+            print(f"AI response contains [FUNCTION_CALL]: {'[FUNCTION_CALL]' in ai_response}")
             # Safety fallback: If no form fields were generated but AI tried to create a form,
             # create a simple form with just the additional thoughts field
-            if '[FUNCTION_CALL]' in ai_response:
+            if '[FUNCTION_CALL]' in ai_response or any(func in ai_response for func in ['create_text_field', 'create_select_field', 'create_checkbox_field']):
                 logger.warning("AI attempted to create form but no fields were generated. Creating safety fallback form.")
+                print(f"Creating safety fallback form...")
                 fallback_field = self.form_builder.create_textarea_field(
                     name="additional_notes",
                     label="Additional Thoughts: (Optional)",
@@ -61,8 +103,12 @@ class FunctionCallParser:
                     placeholder="Ask a question, add details, or tell me anything..."
                 )
                 form_html = self.form_builder.create_complete_form([fallback_field], conversation_text)
+                print(f"Safety fallback form created")
+                print(f"=== END NO FORM FIELDS ===\n")
                 return conversation_text, form_html
             else:
+                print(f"No fallback needed - AI didn't attempt to create a form")
+                print(f"=== END NO FORM FIELDS ===\n")
                 return conversation_text, None
     
     def _extract_function_calls(self, ai_response: str) -> List[Tuple[str, str]]:
@@ -78,6 +124,14 @@ class FunctionCallParser:
         
         # Debug logging
         logger.info(f"Extracting function calls from AI response: {ai_response[:500]}...")
+        print(f"\n=== AI RESPONSE DEBUG ===")
+        print(f"Full AI response length: {len(ai_response)} characters")
+        print(f"First 1000 chars: {ai_response[:1000]}")
+        print(f"Contains [FUNCTION_CALL]: {'[FUNCTION_CALL]' in ai_response}")
+        print(f"Contains create_text_field: {'create_text_field' in ai_response}")
+        print(f"Contains create_select_field: {'create_select_field' in ai_response}")
+        print(f"Contains create_checkbox_field: {'create_checkbox_field' in ai_response}")
+        print(f"=== END AI RESPONSE DEBUG ===\n")
         
         # 1. Extract [FUNCTION_CALL] markers (with parentheses)
         call_markers = list(re.finditer(r'\[FUNCTION_CALL\]', ai_response, re.IGNORECASE))
@@ -94,50 +148,41 @@ class FunctionCallParser:
         
         # 2. Extract function calls with parentheses from code blocks and plain text
         valid_functions = self.get_available_functions()
-        code_block_pattern = r'(?:```[a-zA-Z]*\n)?([a-zA-Z_][a-zA-Z0-9_]*)\s*\(([^)]*)\)(?:\n```)?'
-        for match in re.finditer(code_block_pattern, ai_response):
+        
+        # Improved regex to handle multi-line and complex function calls
+        # This regex captures the entire function call including nested parentheses
+        function_pattern = r'(\w+)\s*\(((?:[^()]*|\([^()]*\))*)\)'
+        
+        for match in re.finditer(function_pattern, ai_response, re.DOTALL):
             func_name = match.group(1)
-            args_str = match.group(2)
+            args_str = match.group(2).strip()
             
             # Only include if it's a valid function name
             if func_name in valid_functions:
                 # Avoid duplicates
                 if (func_name, args_str) not in function_calls:
                     function_calls.append((func_name, args_str))
-                    logger.info(f"Found function call with parentheses: {func_name}({args_str[:100]}...)")
-            else:
-                logger.debug(f"Ignoring invalid function call: {func_name}({args_str[:50]}...)")
+                    logger.info(f"Found function call: {func_name}({args_str[:100]}...)")
         
-        # 3. Extract function calls WITHOUT parentheses (new flexible format)
-        # Look for patterns like: [function_name param1="value" param2="value"]
-        # This handles multi-line function calls
-        bracket_pattern = r'\[([a-zA-Z_][a-zA-Z0-9_]*)\s*([^\]]*)\]'
-        for match in re.finditer(bracket_pattern, ai_response):
-            func_name = match.group(1)
-            args_str = match.group(2)
-            
-            # Only include if it's a valid function name
-            if func_name in valid_functions:
-                # Avoid duplicates
-                if (func_name, args_str) not in function_calls:
+        # 3. Extract function calls without parentheses (fallback)
+        # This handles cases where the AI forgets parentheses
+        for func_name in valid_functions:
+            # Look for function calls without parentheses
+            pattern = rf'{func_name}\s+([^)]+?)(?=\n|$|create_)'
+            for match in re.finditer(pattern, ai_response):
+                args_str = match.group(1).strip()
+                # Only add if it looks like valid arguments
+                if '=' in args_str and (func_name, args_str) not in function_calls:
                     function_calls.append((func_name, args_str))
                     logger.info(f"Found function call without parentheses: {func_name} {args_str[:100]}...")
-            else:
-                logger.debug(f"Ignoring invalid function call: {func_name} {args_str[:50]}...")
         
-        # 4. Extract function calls with incomplete brackets (handle truncated AI output)
-        # Look for patterns like: [function_name ...] where the closing bracket might be missing
-        incomplete_pattern = r'\[([a-zA-Z_][a-zA-Z0-9_]*)\s*([^\]]*?)(?=\n\s*\[|\n\s*$|$)'
-        for match in re.finditer(incomplete_pattern, ai_response):
-            func_name = match.group(1)
-            args_str = match.group(2)
-            
-            # Only include if it's a valid function name and we haven't already found it
-            if func_name in valid_functions and (func_name, args_str) not in function_calls:
-                function_calls.append((func_name, args_str))
-                logger.info(f"Found incomplete function call: {func_name} {args_str[:100]}...")
+        # Log results
+        print(f"\n=== FUNCTION CALL PARSING RESULTS ===")
+        print(f"Total function calls found: {len(function_calls)}")
+        for i, (func_name, args_str) in enumerate(function_calls, 1):
+            print(f"Function call {i}: {func_name}({args_str[:50]}...)")
+        print(f"=== END FUNCTION CALL PARSING ===\n")
         
-        logger.info(f"Total function calls found: {len(function_calls)}")
         return function_calls
     
     def _extract_conversation_text(self, ai_response: str, function_calls: List[Tuple[str, str]]) -> str:
@@ -148,16 +193,18 @@ class FunctionCallParser:
             return ai_response.strip()
         
         # Find the position of the first function call (any format)
-        # Look for [FUNCTION_CALL], [function_name(...)], or [function_name ...]
+        # Look for [FUNCTION_CALL], [function_name(...)], [function_name ...], or code blocks with function calls
         first_call_patterns = [
             r'\[FUNCTION_CALL\]',  # [FUNCTION_CALL] format
             r'\[[a-zA-Z_][a-zA-Z0-9_]*\s*\([^)]*\)\]',  # [function_name(...)] format
-            r'\[[a-zA-Z_][a-zA-Z0-9_]*\s+[^\]]+\]'  # [function_name ...] format
+            r'\[[a-zA-Z_][a-zA-Z0-9_]*\s+[^\]]+\]',  # [function_name ...] format
+            r'```[a-zA-Z]*\s*\n\s*[a-zA-Z_][a-zA-Z0-9_]*\s*\([^)]*\)',  # Code blocks with function calls
+            r'```[a-zA-Z]*\s*\n\s*[a-zA-Z_][a-zA-Z0-9_]*\s+[^\n]*'  # Code blocks with function calls (no parentheses)
         ]
         
         first_match = None
         for pattern in first_call_patterns:
-            match = re.search(pattern, ai_response, re.IGNORECASE)
+            match = re.search(pattern, ai_response, re.IGNORECASE | re.MULTILINE)
             if match and (first_match is None or match.start() < first_match.start()):
                 first_match = match
         
@@ -181,12 +228,8 @@ class FunctionCallParser:
             "create_text_field",
             "create_textarea_field", 
             "create_select_field",
-            "create_radio_field",
             "create_checkbox_field",
-            "create_number_field",
-            "create_year_field",
-            "create_budget_range_field",
-            "create_mileage_range_field"
+            "create_year_field"
         ]
     
     def get_function_documentation(self) -> str:
@@ -203,31 +246,17 @@ create_textarea_field(name, label, required=False, placeholder=None, rows=3, hel
 create_select_field(name, label, options, required=False, help_text=None)
 - Creates a dropdown select field with options
 
-create_radio_field(name, label, options, required=False, help_text=None)
-- Creates a radio button group
-
 create_checkbox_field(name, label, options, required=False, help_text=None)
 - Creates a checkbox group
 
-create_number_field(name, label, required=False, min_value=None, max_value=None, help_text=None)
-- Creates a number input field
-
 create_year_field(name, label, required=False, help_text=None)
-- Creates a year input field (1900-2030)
-
-create_budget_range_field(name, label, required=False, help_text=None)
-- Creates a budget range field with min/max inputs
-
-create_mileage_range_field(name, label, required=False, help_text=None)
-- Creates a mileage range field with min/max inputs
+- Creates a year input field with appropriate placeholder
 
 Usage formats:
-- [FUNCTION_CALL] function_name(name="value", label="Label", required=True)
+- function_name(name="value", label="Label", required=True)
 - [function_name(name="value", label="Label", required=True)]
-- [function_name name="value" label="Label" required=True]
 
-IMPORTANT: For radio fields, checkbox fields, and select fields, you MUST always include the options parameter:
-- create_radio_field(name="choice", label="Make a choice", options=["Option 1", "Option 2", "Option 3"], required=True)
+IMPORTANT: For checkbox fields and select fields, you MUST always include the options parameter:
 - create_checkbox_field(name="selections", label="Select all that apply", options=["Choice A", "Choice B", "Choice C"], required=False)
 - create_select_field(name="dropdown", label="Choose an option", options=["First", "Second", "Third"], required=True)
 """ 

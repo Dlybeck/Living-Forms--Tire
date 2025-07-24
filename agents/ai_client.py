@@ -60,7 +60,7 @@ class AIClient:
         logger.info("AI Client initialized with simplified model set")
     
     async def generate_response(self, user_message: str, conversation_context: Dict[str, Any], 
-                              model_type: ModelType, response_format: str = "text", 
+                              model_type: ModelType, agent_prompt: str, response_format: str = "text", 
                               function_documentation: Optional[str] = None, 
                               needs_web_search: bool = False) -> Dict[str, Any]:
         """
@@ -68,16 +68,16 @@ class AIClient:
         """
         try:
             # Build the prompt
-            prompt = self._build_prompt(user_message, conversation_context, response_format, function_documentation)
+            prompt = self._build_prompt(user_message, conversation_context, response_format, agent_prompt, function_documentation)
             
             # Get model configuration
             model_config = self.model_mappings[model_type]
             
             # Make API call based on provider
             if model_config['provider'] == 'openai':
-                response = await self._call_openai_api(prompt, model_config)
+                response = await self._call_openai_api(prompt, model_config, needs_web_search)
             elif model_config['provider'] == 'anthropic':
-                response = await self._call_anthropic_api(prompt, model_config)
+                response = await self._call_anthropic_api(prompt, model_config, needs_web_search)
             else:
                 raise ValueError(f"Unsupported provider: {model_config['provider']}")
             
@@ -104,12 +104,11 @@ class AIClient:
             }
     
     def _build_prompt(self, user_message: str, conversation_context: Dict[str, Any], 
-                     response_format: str, function_documentation: Optional[str] = None) -> str:
+                     response_format: str, agent_prompt: str, function_documentation: Optional[str] = None) -> str:
         """Build prompt based on context and format requirements"""
         
-        # Get the system prompt
-        from prompts.system_prompt import SYSTEM_PROMPT
-        system_prompt = SYSTEM_PROMPT
+        # Use the agent prompt (no fallback to old system prompt)
+        system_prompt = agent_prompt
         
         # Add function documentation if provided
         if function_documentation:
@@ -124,6 +123,11 @@ class AIClient:
         
         logger.info(f"Built prompt length: {len(prompt)} characters")
         logger.info(f"Prompt ends with: {prompt[-200:]}...")
+        print(f"\n=== PROMPT DEBUG ===")
+        print(f"Prompt length: {len(prompt)} characters")
+        print(f"Last 500 chars of prompt:")
+        print(prompt[-500:])
+        print(f"=== END PROMPT DEBUG ===\n")
         
         return prompt
     
@@ -169,7 +173,7 @@ class AIClient:
         
         return formatted_context
     
-    async def _call_openai_api(self, prompt: str, model_config: Dict[str, Any]) -> Dict[str, Any]:
+    async def _call_openai_api(self, prompt: str, model_config: Dict[str, Any], needs_web_search: bool) -> Dict[str, Any]:
         """Call OpenAI API"""
         headers = {
             'Authorization': f'Bearer {self.api_keys["openai"]}',
@@ -182,6 +186,16 @@ class AIClient:
                 {'role': 'system', 'content': prompt}
             ]
         }
+        
+        # Add web search tools if needed and supported
+        if needs_web_search and model_config.get('web_search', False):
+            data['tools'] = [
+                {
+                    "type": "web_search"
+                }
+            ]
+            data['tool_choice'] = "auto"
+            logger.info("Added web search tools to OpenAI API call")
         
         # Handle different token parameter names for different models
         if 'max_completion_tokens' in model_config:
@@ -205,7 +219,7 @@ class AIClient:
                     error_text = await response.text()
                     raise Exception(f"OpenAI API error: {response.status} - {error_text}")
     
-    async def _call_anthropic_api(self, prompt: str, model_config: Dict[str, Any]) -> Dict[str, Any]:
+    async def _call_anthropic_api(self, prompt: str, model_config: Dict[str, Any], needs_web_search: bool) -> Dict[str, Any]:
         """Call Anthropic API"""
         headers = {
             'x-api-key': self.api_keys['anthropic'],

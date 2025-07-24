@@ -13,7 +13,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Import our modules
-from agents.simple_dual_agent_coordinator import SimpleDualAgentCoordinator
+from agents.simplified_coordinator import SimplifiedCoordinator
 from agents.ai_client import AIClient
 from agents.cost_manager import CostManager, ModelType
 from agents.form_builder import FormBuilder
@@ -30,7 +30,7 @@ tire_db = TireDatabase()
 cost_manager = CostManager(config={"conversation_budget": 0.20})
 ai_client = AIClient()
 form_builder = FormBuilder()
-agent_coordinator = SimpleDualAgentCoordinator(ai_client, cost_manager, form_builder, tire_db)
+agent_coordinator = SimplifiedCoordinator(ai_client, cost_manager, form_builder, tire_db)
 
 # Request/Response models
 class ChatMessage(BaseModel):
