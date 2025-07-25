@@ -1,6 +1,5 @@
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import HTMLResponse
-from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 import uvicorn
@@ -19,20 +18,17 @@ from agents.simplified_coordinator import SimplifiedCoordinator
 from agents.ai_client import AIClient
 from agents.cost_manager import CostManager, ModelType
 from agents.form_builder import FormBuilder
-from database.tire_database import TireDatabase
 
 app = FastAPI(title="Living Form Tire Sales Agent", version="1.0.0")
 
-# Mount static files and templates
-app.mount("/static", StaticFiles(directory="static"), name="static")
+# Mount templates
 templates = Jinja2Templates(directory="templates")
 
 # Initialize components
-tire_db = TireDatabase()
 cost_manager = CostManager(config={"conversation_budget": 0.20})
 ai_client = AIClient()
 form_builder = FormBuilder()
-agent_coordinator = SimplifiedCoordinator(ai_client, cost_manager, form_builder, tire_db)
+agent_coordinator = SimplifiedCoordinator(ai_client, cost_manager, form_builder)
 
 # Request/Response models
 class ChatMessage(BaseModel):
@@ -70,12 +66,6 @@ async def chat_endpoint(chat_request: ChatMessage):
             form_data=chat_request.form_data
         )
         
-        # Debug logging
-        logger.info(f"Response data keys: {list(response_data.keys())}")
-        logger.info(f"Agent display name: {response_data.get('agent_display_name', 'NOT FOUND')}")
-        logger.info(f"Current agent: {response_data.get('current_agent', 'NOT FOUND')}")
-        logger.info(f"Coordinator info: {response_data.get('coordinator_info', 'NOT FOUND')}")
-        
         # Get session info for response
         session_info = await agent_coordinator.get_session_info(chat_request.session_id)
         
@@ -92,10 +82,6 @@ async def chat_endpoint(chat_request: ChatMessage):
             agent_display_name=response_data.get("agent_display_name", "Unknown Agent"),
             coordinator_info=response_data.get("coordinator_info", {})
         )
-        
-        # Debug logging
-        logger.info(f"Final response - current_agent: {chat_response.current_agent}")
-        logger.info(f"Final response - agent_display_name: {chat_response.agent_display_name}")
         
         return chat_response
         

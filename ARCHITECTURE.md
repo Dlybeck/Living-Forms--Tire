@@ -1,8 +1,8 @@
-# Tire Sales Assistant Architecture
+# Tire Sales Assistant Architecture (Simplified)
 
 ## Overview
 
-This is a **unified agent system** for tire sales assistance. The system has been simplified from a complex dual-agent framework to make it easy for new developers to understand and maintain.
+This is a **simplified unified agent system** for tire sales assistance. All legacy components, database functionality, and web search features have been removed for maintainability and simplicity.
 
 ## Core Components
 
@@ -25,34 +25,43 @@ This is a **unified agent system** for tire sales assistance. The system has bee
 
 ## Supporting Components
 
-### 4. **BaseAgent** (`agents/base_agent.py`)
-- **Purpose**: Common functionality for both agents
-- **Key Functions**:
-  - AI response generation
-  - Form creation
-  - Control Headquarters scene generation
-  - Error handling
-
-### 5. **FormBuilder** (`agents/form_builder.py`)
+### 3. **FormBuilder** (`agents/form_builder.py`)
 - **Purpose**: Creates HTML form fields
 - **Key Functions**:
   - Text fields, textareas, selects, checkboxes
   - Automatic form completion
   - Smart placeholders
 
-### 6. **MemoryManager** (`utils/memory_manager.py`)
-- **Purpose**: Tracks conversation history and important data
+### 4. **AIClient** (`agents/ai_client.py`)
+- **Purpose**: Handles AI model communication
 - **Key Functions**:
-  - Extracts important user data
-  - Compresses long conversations
-  - Session management
+  - OpenAI and Anthropic API calls
+  - Model selection and cost optimization
+  - Simplified prompt building
 
-### 7. **StateManager** (`utils/state_manager.py`)
+### 5. **CostManager** (`agents/cost_manager.py`)
+- **Purpose**: Tracks conversation costs
+- **Key Functions**:
+  - Cost tracking for different operations
+  - Budget management
+  - Model cost estimation
+
+### 6. **StateManager** (`utils/state_manager.py`)
 - **Purpose**: Basic session state tracking
 - **Key Functions**:
   - Session initialization
   - State updates
   - Data storage
+
+## Removed Components
+
+### ❌ **Eliminated Legacy:**
+- **Database system** - No longer uses tire_database.py or car-models.json
+- **Web search functionality** - Removed from AI client and prompts
+- **BaseAgent class** - Merged functionality directly into UnifiedTireAgent
+- **Complex cost tracking** - Simplified to work with dictionary-style states only
+- **Debug print statements** - Cleaned up verbose logging
+- **Unused dependencies** - Removed pandas, numpy, structlog, aiofiles, etc.
 
 ## How It Works
 
@@ -62,28 +71,14 @@ This is a **unified agent system** for tire sales assistance. The system has bee
 3. **UnifiedTireAgent processes** → Internal thinking + generates response + form
 4. **Response sent to user** → With AI notepad content
 
-### Key Simplifications Made:
-
-#### ❌ **Removed Complex Components:**
-- Multi-agent handoff system
-- Complex state transitions
-- Over-engineered memory compression
-- Repetitive form field methods
-- Unused completion assessment logic
-
-#### ✅ **Simplified Components:**
-- **Base Agent**: 367 lines → 150 lines (59% reduction)
-- **Form Builder**: 502 lines → 200 lines (60% reduction)
-- **Memory Manager**: 280 lines → 120 lines (57% reduction)
-- **State Manager**: 315 lines → 95 lines (70% reduction)
-
-#### ✅ **Maintained Functionality:**
-- All form generation
-- AI notepad with Control Headquarters
-- Cost tracking
-- Session management
-- Tire recommendations
-- Emotional intelligence
+### Key Features Maintained:
+- ✅ Living Form methodology
+- ✅ Internal "Riley's Head" thinking process
+- ✅ Dynamic form generation
+- ✅ Cost tracking
+- ✅ Session management
+- ✅ Emotional intelligence
+- ✅ Conversation memory
 
 ## File Structure
 
@@ -91,13 +86,28 @@ This is a **unified agent system** for tire sales assistance. The system has bee
 agents/
 ├── simplified_coordinator.py         # Main coordinator
 ├── unified_tire_agent.py             # Complete unified agent
-├── base_agent.py                     # Common agent functionality
 ├── form_builder.py                   # Form generation
 ├── function_call_parser.py           # Parse AI function calls
 ├── ai_client.py                      # AI API communication
 └── cost_manager.py                   # Cost tracking
 
 utils/
+└── state_manager.py                  # Session state management
+
+prompts/
+└── prompt.py                         # Main AI prompt
+
+main.py                                # FastAPI web server
+requirements.txt                       # Simplified dependencies
+```
+
+## Benefits of Simplification
+
+- **Easier to understand** - Removed complex inheritance and legacy patterns
+- **Faster to modify** - Fewer interdependencies and cleaner code
+- **Lower maintenance** - No database or external service dependencies
+- **Reduced costs** - Eliminated unnecessary AI model calls and features
+- **Better performance** - Streamlined execution flow
 ├── state_manager.py                   # Basic state management
 └── memory_manager.py                  # Conversation memory
 

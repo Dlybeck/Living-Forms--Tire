@@ -99,6 +99,37 @@ This ensures:
    cd Tires
    ```
 
+2. **Install dependencies**:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. **Set up environment variables**:
+   ```bash
+   # Create .env file with your API keys
+   OPENAI_API_KEY=your_openai_key_here
+   ANTHROPIC_API_KEY=your_anthropic_key_here
+   ```
+
+4. **Run the application**:
+   ```bash
+   python main.py
+   ```
+
+5. **Open browser**:
+   Navigate to `http://localhost:8000` to use the Living Form interface
+
+## 🔧 Recent Simplifications
+
+The system has been significantly simplified by removing:
+- ❌ Database dependencies (tire_database.py, car-models.json)
+- ❌ Web search functionality 
+- ❌ Complex inheritance patterns (BaseAgent)
+- ❌ Unused dependencies (pandas, numpy, etc.)
+- ❌ Verbose debug logging
+
+**Benefits**: Easier to understand, faster to modify, lower maintenance overhead, and reduced costs.
+
 2. **Create virtual environment**:
    ```bash
    python -m venv venv

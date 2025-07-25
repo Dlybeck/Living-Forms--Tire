@@ -689,9 +689,7 @@
 
             updateNotepad(content) {
                 if (content && content.trim() && content !== 'No information recorded yet.') {
-                    // Format the notepad content as markdown-like HTML
-                    const formattedContent = this.formatNotepadContent(content);
-                    this.notepadContent.innerHTML = DOMPurify.sanitize(formattedContent);
+                    this.notepadContent.innerHTML = DOMPurify.sanitize(content);
                     // Show indicator if notepad is hidden on mobile
                     if (window.innerWidth <= 600 || this.notepadSidebar.classList.contains('notepad-hidden')) {
                         this.notepadIndicator.style.display = 'block';
@@ -699,56 +697,6 @@
                 } else {
                     this.notepadContent.innerHTML = '<em>Your AI assistant is ready to help. Information gathered during our conversation will appear here...</em>';
                 }
-            }
-
-            formatNotepadContent(text) {
-                // Don't escape HTML if it already contains HTML tags
-                let formatted = text;
-                
-                // If the text doesn't contain HTML tags, then format it
-                if (!/<[a-z][\s\S]*>/i.test(text)) {
-                    formatted = this.escapeHtml(text);
-                    
-                    // Convert line breaks to <br> tags
-                    formatted = formatted.replace(/\n/g, '<br>');
-                    
-                    // Convert **bold** to <strong>
-                    formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong style="color: #ecf0f1; font-weight: 600;">$1</strong>');
-                    
-                    // Convert ### headers to <h3>
-                    formatted = formatted.replace(/^### (.*?)$/gm, '<h3 style="color: #3498db; margin: 15px 0 10px 0; font-size: 16px; font-weight: 600;">$1</h3>');
-                    
-                    // Convert ## headers to <h2>
-                    formatted = formatted.replace(/^## (.*?)$/gm, '<h2 style="color: #ecf0f1; margin: 15px 0 10px 0; font-size: 18px; font-weight: 600;">$1</h2>');
-                    
-                    // Convert # headers to <h1>
-                    formatted = formatted.replace(/^# (.*?)$/gm, '<h1 style="color: #ecf0f1; margin: 15px 0 10px 0; font-size: 20px; font-weight: 600;">$1</h1>');
-                    
-                    // Convert numbered lists (1. item)
-                    formatted = formatted.replace(/^(\d+)\. (.*?)$/gm, '<div style="margin:8px 0;"><strong style="color: #3498db;">$1.</strong> $2</div>');
-                    
-                    // Convert bullet points (- item or • item)
-                    formatted = formatted.replace(/^[•-] (.*?)$/gm, '<div style="margin:8px 0;margin-left:15px;color: #bdc3c7;">• $1</div>');
-                    
-                    // Convert code blocks (`code`)
-                    formatted = formatted.replace(/`(.*?)`/g, '<code style="background: #4a5f7a; padding: 2px 6px; border-radius: 4px; font-size: 12px; color: #ecf0f1;">$1</code>');
-                    
-                    // Convert horizontal rules (---)
-                    formatted = formatted.replace(/^---$/gm, '<hr style="border: none; border-top: 2px solid #4a5f7a; margin: 15px 0;">');
-                    
-                    // Handle special formatting for Memory Display and Memory Wall sections
-                    formatted = formatted.replace(/Memory Display shows:/gi, '<strong style="color: #3498db;">Memory Display shows:</strong>');
-                    formatted = formatted.replace(/Memory Wall holds:/gi, '<strong style="color: #3498db;">Memory Wall holds:</strong>');
-                    
-                    // Handle emotion names with proper styling
-                    formatted = formatted.replace(/(Logic|Empathy|Urgency|Curiosity|Fear|Joy|Productivity)(\s*\([^)]*\))?:/g, '<strong style="color: #e74c3c;">$1$2:</strong>');
-                    
-                } else {
-                    // Content already has HTML, just enhance existing styling
-                    formatted = formatted.replace(/style="([^"]*)"/, 'style="$1; color: #bdc3c7;"');
-                }
-                
-                return formatted;
             }
 
             async loadInitialForm() {

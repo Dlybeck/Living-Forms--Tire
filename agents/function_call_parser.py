@@ -21,10 +21,6 @@ class FunctionCallParser:
         Returns:
             Tuple of (conversation_text, form_html)
         """
-        # Print the full unparsed AI response for debugging
-        print("\n=== RAW AI RESPONSE (UNPARSED) ===")
-        print(ai_response)
-        print("=== END RAW AI RESPONSE ===\n")
         # Reset the form builder for this response
         self.form_builder.reset_field_count()
         
@@ -64,38 +60,25 @@ class FunctionCallParser:
         
         # Generate complete form if we have fields
         if form_fields:
-            print(f"\n=== FORM GENERATION SUCCESS ===")
-            print(f"Generated {len(form_fields)} form fields")
-            for i, field in enumerate(form_fields):
-                # Extract field name from HTML for debugging
-                import re
-                name_match = re.search(r'name="([^"]*)"', field)
-                field_name = name_match.group(1) if name_match else "unknown"
-                label_match = re.search(r'<label[^>]*>([^<]*)</label>', field)
-                field_label = label_match.group(1) if label_match else "unknown"
-                print(f"Field {i+1}: {field_name} - {field_label}")
+            logger.info(f"Generated {len(form_fields)} form fields")
             
             # Check if conversation text contains embedded function calls
             if re.search(r'\{[^}]+\}', conversation_text):
                 # Use embedded form method
                 form_html = self.form_builder.create_embedded_form(conversation_text)
-                print(f"Embedded form HTML generated successfully")
+                logger.debug("Using embedded form method")
             else:
                 # Use traditional form method
                 form_html = self.form_builder.create_complete_form(form_fields, conversation_text)
-                print(f"Traditional form HTML generated successfully")
+                logger.debug("Using traditional form method")
             
-            print(f"=== END FORM GENERATION ===\n")
-            return conversation_text, form_html  # Return conversation text AND form HTML
+            return conversation_text, form_html
         else:
-            print(f"\n=== NO FORM FIELDS GENERATED ===")
-            print(f"Form fields list is empty")
-            print(f"AI response contains [FUNCTION_CALL]: {'[FUNCTION_CALL]' in ai_response}")
+            logger.info("No form fields generated")
             # Safety fallback: If no form fields were generated but AI tried to create a form,
             # create a simple form with just the additional thoughts field
             if '[FUNCTION_CALL]' in ai_response or any(func in ai_response for func in ['create_text_field', 'create_select_field', 'create_checkbox_field']):
                 logger.warning("AI attempted to create form but no fields were generated. Creating safety fallback form.")
-                print(f"Creating safety fallback form...")
                 fallback_field = self.form_builder.create_textarea_field(
                     name="additional_notes",
                     label="Additional Thoughts: (Optional)",
@@ -122,16 +105,7 @@ class FunctionCallParser:
         import re
         function_calls = []
         
-        # Debug logging
-        logger.info(f"Extracting function calls from AI response: {ai_response[:500]}...")
-        print(f"\n=== AI RESPONSE DEBUG ===")
-        print(f"Full AI response length: {len(ai_response)} characters")
-        print(f"First 1000 chars: {ai_response[:1000]}")
-        print(f"Contains [FUNCTION_CALL]: {'[FUNCTION_CALL]' in ai_response}")
-        print(f"Contains create_text_field: {'create_text_field' in ai_response}")
-        print(f"Contains create_select_field: {'create_select_field' in ai_response}")
-        print(f"Contains create_checkbox_field: {'create_checkbox_field' in ai_response}")
-        print(f"=== END AI RESPONSE DEBUG ===\n")
+        logger.debug(f"Extracting function calls from AI response: {len(ai_response)} characters")
         
         # 1. Extract [FUNCTION_CALL] markers (with parentheses)
         call_markers = list(re.finditer(r'\[FUNCTION_CALL\]', ai_response, re.IGNORECASE))
@@ -142,9 +116,9 @@ class FunctionCallParser:
                 func_name = func_match.group(1)
                 args_str = func_match.group(2)
                 function_calls.append((func_name, args_str))
-                logger.info(f"Found [FUNCTION_CALL]: {func_name}({args_str[:100]}...)")
+                logger.debug(f"Found [FUNCTION_CALL]: {func_name}")
             else:
-                logger.warning(f"Found [FUNCTION_CALL] marker but couldn't parse function: {after_marker[:100]}...")
+                logger.warning(f"Found [FUNCTION_CALL] marker but couldn't parse function")
         
         # 2. Extract function calls with parentheses from code blocks and plain text
         valid_functions = self.get_available_functions()
@@ -162,7 +136,7 @@ class FunctionCallParser:
                 # Avoid duplicates
                 if (func_name, args_str) not in function_calls:
                     function_calls.append((func_name, args_str))
-                    logger.info(f"Found function call: {func_name}({args_str[:100]}...)")
+                    logger.debug(f"Found function call: {func_name}")
         
         # 3. Extract function calls without parentheses (fallback)
         # This handles cases where the AI forgets parentheses

@@ -11,7 +11,6 @@ from agents.unified_tire_agent import UnifiedTireAgent
 from agents.ai_client import AIClient
 from agents.cost_manager import CostManager
 from agents.form_builder import FormBuilder
-from database.tire_database import TireDatabase
 from utils.state_manager import StateManager, ConversationState
 
 logger = logging.getLogger(__name__)
@@ -21,11 +20,10 @@ class SimplifiedCoordinator:
     Simplified coordinator using only the Unified Tire Agent
     """
     
-    def __init__(self, ai_client: AIClient, cost_manager: CostManager, form_builder: FormBuilder, tire_database: TireDatabase):
+    def __init__(self, ai_client: AIClient, cost_manager: CostManager, form_builder: FormBuilder):
         self.ai_client = ai_client
         self.cost_manager = cost_manager
         self.form_builder = form_builder
-        self.tire_database = tire_database
         
         # Initialize only the unified agent
         self.unified_agent = UnifiedTireAgent(ai_client, cost_manager, form_builder)
@@ -114,7 +112,6 @@ class SimplifiedCoordinator:
             'current_step': session.get('current_step', 'unknown'),
             'form_data': form_data or {},
             'state': state,
-            'tire_database': self.tire_database,
             'needs_form': True
         }
         

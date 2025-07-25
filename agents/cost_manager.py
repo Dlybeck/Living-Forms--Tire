@@ -72,25 +72,8 @@ class CostManager:
         return ModelType.O4_MINI
     
     def track_cost(self, operation_type: str, actual_cost: float, conversation_state):
-        """Track actual cost of operation"""
-        # Handle different types of conversation state objects
-        if hasattr(conversation_state, 'shared_data'):
-            # Old ConversationRoadmap style
-            shared_data = conversation_state.shared_data
-            shared_data['total_cost'] = shared_data.get('total_cost', 0.0) + actual_cost
-            if 'cost_breakdown' not in shared_data:
-                shared_data['cost_breakdown'] = {}
-            shared_data['cost_breakdown'][operation_type] = shared_data['cost_breakdown'].get(operation_type, 0.0) + actual_cost
-            logger.info(f"Cost tracked: {operation_type} = ${actual_cost:.4f}, Total: ${shared_data['total_cost']:.4f}")
-        elif hasattr(conversation_state, 'total_cost'):
-            # Object with total_cost attribute
-            conversation_state.total_cost = getattr(conversation_state, 'total_cost', 0.0) + actual_cost
-            if not hasattr(conversation_state, 'cost_breakdown'):
-                conversation_state.cost_breakdown = {}
-            conversation_state.cost_breakdown[operation_type] = conversation_state.cost_breakdown.get(operation_type, 0.0) + actual_cost
-            logger.info(f"Cost tracked: {operation_type} = ${actual_cost:.4f}, Total: ${conversation_state.total_cost:.4f}")
-        elif isinstance(conversation_state, dict):
-            # Dictionary style (new session structure)
+        """Track actual cost of operation - simplified for dictionary-style state"""
+        if isinstance(conversation_state, dict):
             conversation_state['total_cost'] = conversation_state.get('total_cost', 0.0) + actual_cost
             if 'cost_breakdown' not in conversation_state:
                 conversation_state['cost_breakdown'] = {}
@@ -100,40 +83,23 @@ class CostManager:
             # Fallback - just log the cost
             logger.info(f"Cost tracked: {operation_type} = ${actual_cost:.4f} (no state tracking available)")
     
-    def estimate_cost(self, prompt: str, model_type: ModelType, expected_output_length: int = 200) -> float:
-        """Estimate cost for a prompt"""
-        # Rough token estimation
-        input_tokens = len(prompt.split()) * 1.3  # Approximation
-        output_tokens = expected_output_length * 1.3
-        
-        costs = self.model_costs[model_type]
-        estimated_cost = (input_tokens / 1000) * costs['input_cost'] + (output_tokens / 1000) * costs['output_cost']
-        
-        return estimated_cost
-    
     def get_remaining_budget(self, conversation_state) -> float:
         """Get remaining budget for this conversation"""
-        if hasattr(conversation_state, 'shared_data'):
-            total_cost = conversation_state.shared_data.get('total_cost', 0.0)
+        if isinstance(conversation_state, dict):
+            total_cost = conversation_state.get('total_cost', 0.0)
         else:
-            total_cost = getattr(conversation_state, 'total_cost', 0.0)
+            total_cost = 0.0
         return max(0, self.conversation_budget - total_cost)
     
-    def get_cost_summary(self, conversation_state) -> Dict[str, Any]:
-        """Get cost summary"""
-        if hasattr(conversation_state, 'shared_data'):
-            shared_data = conversation_state.shared_data
-            total_cost = shared_data.get('total_cost', 0.0)
-            cost_breakdown = shared_data.get('cost_breakdown', {})
-            conversation_history = getattr(conversation_state, 'conversation_history', [])
-        else:
-            total_cost = getattr(conversation_state, 'total_cost', 0.0)
-            cost_breakdown = getattr(conversation_state, 'cost_breakdown', {})
-            conversation_history = getattr(conversation_state, 'conversation_history', [])
+    def get_cost_summary(self, session_info: Dict[str, Any]) -> Dict[str, Any]:
+        """Get cost summary for a session"""
+        total_cost = session_info.get('total_cost', 0.0)
+        cost_breakdown = session_info.get('cost_breakdown', {})
+        conversation_history = session_info.get('conversation_history', [])
         
         return {
             "total_cost": total_cost,
-            "budget_remaining": self.get_remaining_budget(conversation_state),
+            "budget_remaining": max(0, self.conversation_budget - total_cost),
             "budget_used_percentage": (total_cost / self.conversation_budget) * 100 if self.conversation_budget else 0.0,
             "cost_breakdown": cost_breakdown,
             "interactions_count": len(conversation_history),

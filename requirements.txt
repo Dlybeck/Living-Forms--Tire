@@ -10,29 +10,17 @@ jinja2>=3.1.0,<3.2.0
 
 # File handling
 python-multipart>=0.0.6,<0.1.0
-aiofiles>=23.2.0,<24.0.0
 
 # HTTP client
 aiohttp>=3.9.0,<4.0.0
 
-# Web search is handled by AI models directly - no external service needed
-
 # Environment management
 python-dotenv>=1.0.0,<2.0.0
 
-# AI/ML libraries - using compatible versions
+# AI/ML libraries
 anthropic>=0.7.0,<0.8.0
 openai>=1.10.0,<2.0.0
 
-# Data processing
-pandas>=2.1.0,<2.2.0
-numpy>=1.24.0,<1.25.0
-
-# Logging
-structlog>=23.2.0,<24.0.0
-
-# Development tools
+# Development tools (optional)
 pytest>=7.4.0,<7.5.0
-pytest-asyncio>=0.21.0,<0.22.0
-black>=23.11.0,<24.0.0
-flake8>=6.1.0,<6.2.0 
+pytest-asyncio>=0.21.0,<0.22.0 

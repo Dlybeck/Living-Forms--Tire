@@ -24,31 +24,27 @@ class AIClient:
             'anthropic': 'https://api.anthropic.com/v1/messages'
         }
         
-        # Model mappings - prioritize O4-mini for complex reasoning and detailed form generation
+        # Model mappings - simplified for core functionality
         self.model_mappings = {
             ModelType.O4_MINI: {
                 'provider': 'openai',
                 'model_name': 'o4-mini-2025-04-16',
-                'max_completion_tokens': 4096,
-                'web_search': True
+                'max_completion_tokens': 4096
             },
             ModelType.GPT_4_1: {
                 'provider': 'openai',
                 'model_name': 'gpt-4.1-2025-04-14',
-                'max_tokens': 4096,
-                'web_search': True
+                'max_tokens': 4096
             },
             ModelType.GPT_4_1_MINI: {
                 'provider': 'openai',
                 'model_name': 'gpt-4.1-mini',
-                'max_tokens': 4096,
-                'web_search': True
+                'max_tokens': 4096
             },
             ModelType.GPT_4O_MINI: {
                 'provider': 'openai',
                 'model_name': 'gpt-4o-mini',
-                'max_tokens': 4096,
-                'web_search': True
+                'max_tokens': 4096
             },
             ModelType.CLAUDE_3_5_SONNET: {
                 'provider': 'anthropic', 
@@ -61,8 +57,7 @@ class AIClient:
     
     async def generate_response(self, user_message: str, conversation_context: Dict[str, Any], 
                               model_type: ModelType, agent_prompt: str, response_format: str = "text", 
-                              function_documentation: Optional[str] = None, 
-                              needs_web_search: bool = False) -> Dict[str, Any]:
+                              function_documentation: Optional[str] = None) -> Dict[str, Any]:
         """
         Generate AI response using specified model
         """
@@ -75,9 +70,9 @@ class AIClient:
             
             # Make API call based on provider
             if model_config['provider'] == 'openai':
-                response = await self._call_openai_api(prompt, model_config, needs_web_search)
+                response = await self._call_openai_api(prompt, model_config)
             elif model_config['provider'] == 'anthropic':
-                response = await self._call_anthropic_api(prompt, model_config, needs_web_search)
+                response = await self._call_anthropic_api(prompt, model_config)
             else:
                 raise ValueError(f"Unsupported provider: {model_config['provider']}")
             
@@ -122,12 +117,7 @@ class AIClient:
         prompt = f"{system_prompt}\n\n{context_info}\n\nUser: {user_message}\n\nAssistant:"
         
         logger.info(f"Built prompt length: {len(prompt)} characters")
-        logger.info(f"Prompt ends with: {prompt[-200:]}...")
-        print(f"\n=== PROMPT DEBUG ===")
-        print(f"Prompt length: {len(prompt)} characters")
-        print(f"Last 500 chars of prompt:")
-        print(prompt[-500:])
-        print(f"=== END PROMPT DEBUG ===\n")
+        logger.debug(f"Prompt ends with: {prompt[-200:]}...")
         
         return prompt
     
@@ -173,7 +163,7 @@ class AIClient:
         
         return formatted_context
     
-    async def _call_openai_api(self, prompt: str, model_config: Dict[str, Any], needs_web_search: bool) -> Dict[str, Any]:
+    async def _call_openai_api(self, prompt: str, model_config: Dict[str, Any]) -> Dict[str, Any]:
         """Call OpenAI API"""
         headers = {
             'Authorization': f'Bearer {self.api_keys["openai"]}',
@@ -186,16 +176,6 @@ class AIClient:
                 {'role': 'system', 'content': prompt}
             ]
         }
-        
-        # Add web search tools if needed and supported
-        if needs_web_search and model_config.get('web_search', False):
-            data['tools'] = [
-                {
-                    "type": "web_search"
-                }
-            ]
-            data['tool_choice'] = "auto"
-            logger.info("Added web search tools to OpenAI API call")
         
         # Handle different token parameter names for different models
         if 'max_completion_tokens' in model_config:
@@ -219,7 +199,7 @@ class AIClient:
                     error_text = await response.text()
                     raise Exception(f"OpenAI API error: {response.status} - {error_text}")
     
-    async def _call_anthropic_api(self, prompt: str, model_config: Dict[str, Any], needs_web_search: bool) -> Dict[str, Any]:
+    async def _call_anthropic_api(self, prompt: str, model_config: Dict[str, Any]) -> Dict[str, Any]:
         """Call Anthropic API"""
         headers = {
             'x-api-key': self.api_keys['anthropic'],

@@ -30,7 +30,7 @@ class ConversationState:
         if self.last_updated is None:
             object.__setattr__(self, 'last_updated', datetime.now())
     
-    def update(self, **kwargs) -> 'SimpleConversationState':
+    def update(self, **kwargs) -> 'ConversationState':
         """Create new state with updates"""
         return replace(self, **kwargs, last_updated=datetime.now())
 

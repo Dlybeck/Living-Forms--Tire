@@ -64,6 +64,8 @@
             font-weight: 400;
         }
 
+
+
         .form-workspace {
             flex: 1;
             padding: 30px;
@@ -327,6 +329,21 @@
             background: #f8fff8;
         }
 
+        .living-form.novice-level {
+            border-color: #28a745;
+            background: linear-gradient(135deg, #f8fff8 0%, #f0fff4 100%);
+        }
+
+        .living-form.expert-level {
+            border-color: #dc3545;
+            background: linear-gradient(135deg, #fff8f8 0%, #fff5f5 100%);
+        }
+
+        .living-form.intermediate-level {
+            border-color: #ffc107;
+            background: linear-gradient(135deg, #fffef8 0%, #fffcf0 100%);
+        }
+
         .form-header {
             margin-bottom: 25px;
             padding-bottom: 15px;
@@ -392,6 +409,27 @@
             opacity: 0.7;
         }
 
+        /* FORM FIELD HELPERS */
+        .help-tooltip {
+            position: relative;
+            display: inline-block;
+            margin-left: 8px;
+        }
+
+        .help-icon {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #667eea;
+            color: white;
+            text-align: center;
+            font-size: 13px;
+            line-height: 20px;
+            cursor: help;
+            font-weight: 600;
+        }
+
         .help-examples {
             margin-top: 12px;
             padding: 15px;
@@ -401,6 +439,225 @@
             color: #0f4c75;
             border-left: 4px solid #3498db;
             line-height: 1.5;
+        }
+
+        .help-guide {
+            margin-top: 12px;
+            padding: 15px;
+            background: linear-gradient(135deg, #fff8e1 0%, #fffde7 100%);
+            border-left: 4px solid #ff9800;
+            border-radius: 8px;
+            font-size: 14px;
+            color: #bf6900;
+            line-height: 1.5;
+        }
+
+        .radio-group, .checkbox-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 12px;
+            margin-top: 10px;
+        }
+
+        .radio-option, .checkbox-option {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            cursor: pointer;
+            padding: 15px 18px;
+            border-radius: 10px;
+            transition: all 0.3s ease;
+            border: 2px solid #e9ecef;
+            background: white;
+        }
+
+        .radio-option:hover, .checkbox-option:hover {
+            background: #f8f9fa;
+            border-color: #667eea;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.1);
+        }
+
+        .radio-option input[type="radio"],
+        .checkbox-option input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            margin: 0;
+            cursor: pointer;
+            accent-color: #667eea;
+        }
+
+        .radio-label, .checkbox-label {
+            font-weight: 600;
+            color: #2c3e50;
+            font-size: 15px;
+        }
+
+        .radio-option small, .checkbox-option small {
+            display: block;
+            margin-top: 6px;
+            color: #6c757d;
+            font-size: 13px;
+            line-height: 1.4;
+        }
+
+        /* BUDGET FORM STYLING */
+        .budget-input {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .budget-options {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 15px;
+        }
+
+        .budget-option {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            cursor: pointer;
+            padding: 18px 20px;
+            border-radius: 12px;
+            border: 2px solid #e9ecef;
+            transition: all 0.3s ease;
+            background: white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        }
+
+        .budget-option:hover {
+            border-color: #667eea;
+            background: #f8f9fa;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(102, 126, 234, 0.15);
+        }
+
+        .budget-option input[type="checkbox"] {
+            width: 22px;
+            height: 22px;
+            margin: 0;
+            cursor: pointer;
+            accent-color: #667eea;
+        }
+
+        .budget-label {
+            font-weight: 600;
+            color: #2c3e50;
+            font-size: 16px;
+        }
+
+        .budget-range {
+            padding: 20px;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border-radius: 12px;
+            border: 2px solid #dee2e6;
+            margin-top: 15px;
+        }
+
+        .budget-range label {
+            display: block;
+            margin-bottom: 12px;
+            font-weight: 600;
+            color: #2c3e50;
+            font-size: 16px;
+        }
+
+        .range-inputs {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .range-inputs input {
+            width: 120px;
+            padding: 12px 15px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: 600;
+            font-size: 15px;
+        }
+
+        .range-inputs input:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .range-inputs span {
+            color: #6c757d;
+            font-weight: 600;
+            font-size: 16px;
+        }
+
+        /* CUSTOM USAGE AND CLEAR SELECTION */
+        .custom-usage {
+            margin-top: 20px;
+            padding: 20px;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border-radius: 12px;
+            border: 2px solid #dee2e6;
+        }
+
+        .custom-usage label {
+            display: block;
+            margin-bottom: 12px;
+            font-weight: 600;
+            color: #2c3e50;
+            font-size: 16px;
+        }
+
+        .custom-usage textarea {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            font-family: inherit;
+            font-size: 15px;
+            resize: vertical;
+            min-height: 80px;
+            line-height: 1.5;
+        }
+
+        .custom-usage textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+        }
+
+        .clear-selection {
+            margin-top: 15px;
+            text-align: center;
+        }
+
+        .clear-selection button {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .clear-selection button:hover {
+            background: #5a6268;
+            transform: translateY(-1px);
+        }
+
+        .inline-form-group {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .inline-form-group .form-group {
+            flex: 1;
+            min-width: 200px;
         }
 
         /* FORM ACTIONS AND BUTTONS */
@@ -435,10 +692,71 @@
         }
 
         .btn-primary:disabled {
-            background: #28a745;
+            background: #6c757d;
             cursor: not-allowed;
             transform: none;
             box-shadow: none;
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #6f42c1 0%, #9c27b0 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 3px 10px rgba(111, 66, 193, 0.3);
+        }
+
+        .btn-secondary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(111, 66, 193, 0.4);
+        }
+
+        .btn-help {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+        }
+
+        .btn-help:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(40, 167, 69, 0.4);
+        }
+
+        /* NOTIFICATIONS AND STATUS */
+        .flexibility-note {
+            background: linear-gradient(135deg, #e7f3ff 0%, #f3e5f5 100%);
+            border: 2px solid #b3d9ff;
+            border-radius: 10px;
+            padding: 18px;
+            margin-bottom: 20px;
+            font-size: 15px;
+            color: #0066cc;
+            font-weight: 500;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+
+        .skip-note {
+            background: #f8f9fa;
+            border: 2px solid #dee2e6;
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 20px;
+            font-size: 14px;
+            color: #6c757d;
+            text-align: center;
+            font-weight: 500;
         }
 
         .submitted-indicator {
@@ -525,6 +843,29 @@
             .form-section {
                 padding: 20px;
             }
+
+            .radio-group, .checkbox-group {
+                grid-template-columns: 1fr;
+            }
+
+            .budget-options {
+                grid-template-columns: 1fr;
+            }
+
+            .form-actions {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .range-inputs {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 10px;
+            }
+
+            .range-inputs input {
+                width: 100%;
+            }
         }
 
         @media (max-width: 600px) {
@@ -556,6 +897,10 @@
 
             .form-section {
                 padding: 20px 15px;
+            }
+
+            .inline-form-group {
+                flex-direction: column;
             }
         }
     </style>
@@ -689,9 +1034,7 @@
 
             updateNotepad(content) {
                 if (content && content.trim() && content !== 'No information recorded yet.') {
-                    // Format the notepad content as markdown-like HTML
-                    const formattedContent = this.formatNotepadContent(content);
-                    this.notepadContent.innerHTML = DOMPurify.sanitize(formattedContent);
+                    this.notepadContent.innerHTML = DOMPurify.sanitize(content);
                     // Show indicator if notepad is hidden on mobile
                     if (window.innerWidth <= 600 || this.notepadSidebar.classList.contains('notepad-hidden')) {
                         this.notepadIndicator.style.display = 'block';
@@ -699,56 +1042,6 @@
                 } else {
                     this.notepadContent.innerHTML = '<em>Your AI assistant is ready to help. Information gathered during our conversation will appear here...</em>';
                 }
-            }
-
-            formatNotepadContent(text) {
-                // Don't escape HTML if it already contains HTML tags
-                let formatted = text;
-                
-                // If the text doesn't contain HTML tags, then format it
-                if (!/<[a-z][\s\S]*>/i.test(text)) {
-                    formatted = this.escapeHtml(text);
-                    
-                    // Convert line breaks to <br> tags
-                    formatted = formatted.replace(/\n/g, '<br>');
-                    
-                    // Convert **bold** to <strong>
-                    formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong style="color: #ecf0f1; font-weight: 600;">$1</strong>');
-                    
-                    // Convert ### headers to <h3>
-                    formatted = formatted.replace(/^### (.*?)$/gm, '<h3 style="color: #3498db; margin: 15px 0 10px 0; font-size: 16px; font-weight: 600;">$1</h3>');
-                    
-                    // Convert ## headers to <h2>
-                    formatted = formatted.replace(/^## (.*?)$/gm, '<h2 style="color: #ecf0f1; margin: 15px 0 10px 0; font-size: 18px; font-weight: 600;">$1</h2>');
-                    
-                    // Convert # headers to <h1>
-                    formatted = formatted.replace(/^# (.*?)$/gm, '<h1 style="color: #ecf0f1; margin: 15px 0 10px 0; font-size: 20px; font-weight: 600;">$1</h1>');
-                    
-                    // Convert numbered lists (1. item)
-                    formatted = formatted.replace(/^(\d+)\. (.*?)$/gm, '<div style="margin:8px 0;"><strong style="color: #3498db;">$1.</strong> $2</div>');
-                    
-                    // Convert bullet points (- item or • item)
-                    formatted = formatted.replace(/^[•-] (.*?)$/gm, '<div style="margin:8px 0;margin-left:15px;color: #bdc3c7;">• $1</div>');
-                    
-                    // Convert code blocks (`code`)
-                    formatted = formatted.replace(/`(.*?)`/g, '<code style="background: #4a5f7a; padding: 2px 6px; border-radius: 4px; font-size: 12px; color: #ecf0f1;">$1</code>');
-                    
-                    // Convert horizontal rules (---)
-                    formatted = formatted.replace(/^---$/gm, '<hr style="border: none; border-top: 2px solid #4a5f7a; margin: 15px 0;">');
-                    
-                    // Handle special formatting for Memory Display and Memory Wall sections
-                    formatted = formatted.replace(/Memory Display shows:/gi, '<strong style="color: #3498db;">Memory Display shows:</strong>');
-                    formatted = formatted.replace(/Memory Wall holds:/gi, '<strong style="color: #3498db;">Memory Wall holds:</strong>');
-                    
-                    // Handle emotion names with proper styling
-                    formatted = formatted.replace(/(Logic|Empathy|Urgency|Curiosity|Fear|Joy|Productivity)(\s*\([^)]*\))?:/g, '<strong style="color: #e74c3c;">$1$2:</strong>');
-                    
-                } else {
-                    // Content already has HTML, just enhance existing styling
-                    formatted = formatted.replace(/style="([^"]*)"/, 'style="$1; color: #bdc3c7;"');
-                }
-                
-                return formatted;
             }
 
             async loadInitialForm() {
@@ -989,12 +1282,8 @@
                     `;
                 }
                 
-                // Show form HTML if present (prioritize this over plain response to avoid duplication)
-                if (response.form_html) {
-                    html += `<div class="form-section">${response.form_html}</div>`;
-                }
-                // Only show AI response if there's no form HTML
-                else if (response.response && response.response.trim()) {
+                // Show AI response if present
+                if (response.response && response.response.trim()) {
                     const isBlockHtml = /^\s*<(div|form|h[1-6]|table|section|header|footer|main|article|nav|ul|ol|li|p|fieldset|legend|label|input|button|select|option|textarea|hr|br|img|span|style|script|link|meta|title|head|body|html)[\s>]/i.test(response.response);
                     
                     if (isBlockHtml) {
@@ -1007,6 +1296,11 @@
                             </div>
                         `;
                     }
+                }
+                
+                // Show form HTML if present
+                if (response.form_html) {
+                    html += `<div class="form-section">${response.form_html}</div>`;
                 }
                 
                 // If no content, show a placeholder
@@ -1040,17 +1334,10 @@
             }
 
             updateCostTracker(costInfo) {
-                if (costInfo && typeof costInfo.cost === 'number') {
-                    this.sessionCost += costInfo.cost;
-                    this.messageCount++;
-                    this.sessionCostElement.textContent = this.sessionCost.toFixed(4);
-                    this.interactionCountElement.textContent = this.messageCount;
-                } else {
-                    // Handle case where cost_info is missing or invalid
-                    this.messageCount++;
-                    this.interactionCountElement.textContent = this.messageCount;
-                    console.warn('Cost info missing or invalid:', costInfo);
-                }
+                this.sessionCost += costInfo.cost;
+                this.messageCount++;
+                this.sessionCostElement.textContent = this.sessionCost.toFixed(4);
+                this.interactionCountElement.textContent = this.messageCount;
             }
 
             showLoading() {
@@ -1104,3 +1391,309 @@
     </script>
 </body>
 </html>
+                    },
+                    body: JSON.stringify({
+                        message: message,
+                        session_id: this.sessionId,
+                        form_data: formData
+                    })
+                });
+                if (!response.ok) {
+                    throw new Error(`API error: ${response.status}`);
+                }
+                return await response.json();
+            }
+
+            renderForm(response, isInitial = false) {
+                // Only used for initial form - replaces content
+                let html = '';
+                
+                // Show agent handoff information if present
+                if (response.handoff_info) {
+                    const handoff = response.handoff_info;
+                    html += `
+                        <div style="background:#dc3545;color:white;padding:12px 18px;border-radius:8px;margin-bottom:18px;font-size:14px;font-weight:500;text-align:center;border:2px solid #c82333;">
+                            🔄 <strong>AGENT SWITCH:</strong> ${handoff.from_agent} → ${handoff.to_agent}
+                            <br><small style="opacity:0.9;">${handoff.reason}</small>
+                        </div>
+                    `;
+                }
+                
+                // Show current agent info (user-friendly display) - SIMPLE VERSION
+                console.log('🔍 Agent display check:', response.agent_display_name);
+                if (response.agent_display_name) {
+                    console.log('✅ Adding agent display for:', response.agent_display_name);
+                    html += `<div style="background:#007bff;color:white;padding:12px 20px;border-radius:8px;margin-bottom:20px;font-size:16px;text-align:center;border:3px solid #0056b3;font-weight:bold;box-shadow:0 4px 8px rgba(0,0,0,0.2);">🤖 <strong>Current Specialist:</strong> ${response.agent_display_name}</div>`;
+                } else {
+                    console.log('❌ No agent_display_name found in response');
+                }
+                
+                // Debug: Log response data
+                console.log('🔍 FULL RESPONSE OBJECT:', response);
+                console.log('Response coordinator_info:', response.coordinator_info);
+                console.log('Response handoff_info:', response.handoff_info);
+                console.log('Response agent_display_name:', response.agent_display_name);
+                console.log('Response current_agent:', response.current_agent);
+                
+                // Show inline guidance if present
+                if (response.inline_guidance) {
+                    html += `<div class="inline-guidance" style="background:#fff3cd;border:1px solid #ffeeba;padding:12px 18px;border-radius:8px;color:#856404;margin-bottom:18px;font-size:15px;">${response.inline_guidance}</div>`;
+                }
+                
+                // For Living Form: Show AI response as conversation with embedded forms
+                if (response.response && response.response.trim()) {
+                    // Only treat as HTML if it starts with a block-level tag
+                    const blockLevelHtmlRegex = /^\s*<(div|form|h[1-6]|table|section|header|footer|main|article|nav|ul|ol|li|p|fieldset|legend|label|input|button|select|option|textarea|hr|br|img|span|style|script|link|meta|title|head|body|html)[\s>]/i;
+                    const isBlockHtml = blockLevelHtmlRegex.test(response.response);
+                    
+                    if (isBlockHtml) {
+                        // If it contains HTML, render it directly (sanitized)
+                        const sanitizedHtml = DOMPurify.sanitize(response.response);
+                        html += `<div class="ai-response" style="background:white;padding:20px;border-radius:12px;margin-bottom:20px;border:1px solid #e1e5e9;font-size:15px;line-height:1.6;box-shadow:0 2px 4px rgba(0,0,0,0.1);">${sanitizedHtml}</div>`;
+                    } else {
+                        // Apply simple text formatting instead of Markdown
+                        const formattedText = this.formatAIResponse(response.response);
+                        html += `<div class="ai-response" style="background:white;padding:20px;border-radius:12px;margin-bottom:20px;border:1px solid #e1e5e9;font-size:15px;line-height:1.6;box-shadow:0 2px 4px rgba(0,0,0,0.1);">${formattedText}</div>`;
+                    }
+                }
+                
+                // Show any extracted form HTML if present
+                if (response.form_html) {
+                    html += response.form_html;
+                }
+                
+                // If neither response nor form, show a fallback
+                if (!response.response && !response.form_html) {
+                    html += '<div style="padding:20px;text-align:center;color:#666;">Continue with your tire search...</div>';
+                }
+                
+                this.mainFormArea.innerHTML = html;
+                
+                // Update the notepad if content is provided
+                if (response.notepad_content) {
+                    this.updateNotepad(response.notepad_content);
+                }
+                
+                // Store response in history for internal tracking
+                this.conversationHistory.push({
+                    type: 'assistant',
+                    content: response,
+                    timestamp: new Date()
+                });
+                
+                // Set up form submission handlers for any forms in the response
+                this.setupFormHandlers();
+            }
+
+
+
+            disableCurrentForm(formData) {
+                // Disable the current form in place
+                const currentForm = this.mainFormArea.querySelector('form:not([data-disabled="true"])');
+                if (currentForm) {
+                    // Mark as disabled to prevent multiple processing
+                    currentForm.dataset.disabled = 'true';
+                    
+                    // Fill in the values and make inputs read-only
+                    for (const [key, value] of Object.entries(formData)) {
+                        // Skip non-string values (like _context object)
+                        if (typeof value === 'string' && value && value.trim()) {
+                            const input = currentForm.querySelector(`[name="${key}"]`);
+                            if (input) {
+                                input.value = value;
+                                input.readOnly = true;
+                                input.disabled = true;
+                                input.style.backgroundColor = '#f8f9fa';
+                                input.style.cursor = 'default';
+                            }
+                        }
+                    }
+                    
+                    // Disable the submit button instead of removing it
+                    const submitButton = currentForm.querySelector('button[type="submit"]');
+                    if (submitButton) {
+                        submitButton.disabled = true;
+                        submitButton.style.backgroundColor = '#6c757d';
+                        submitButton.style.cursor = 'not-allowed';
+                        submitButton.textContent = 'Processing...';
+                    }
+                    
+                    // Add a "submitted" indicator only if it doesn't exist
+                    if (!currentForm.querySelector('.submitted-indicator')) {
+                        const submittedIndicator = document.createElement('div');
+                        submittedIndicator.className = 'submitted-indicator';
+                        submittedIndicator.innerHTML = '<div style="text-align:center;padding:10px;background:#28a745;color:white;border-radius:6px;margin-top:10px;">✓ Form Submitted</div>';
+                        currentForm.appendChild(submittedIndicator);
+                    }
+                }
+                
+                // Store in history
+                this.conversationHistory.push({
+                    type: 'user',
+                    content: formData,
+                    timestamp: new Date()
+                });
+            }
+
+            addNewFormBelow(response) {
+                // Add the new AI response below the current form
+                let html = '';
+                
+                // Show agent handoff information if present
+                if (response.handoff_info) {
+                    const handoff = response.handoff_info;
+                    html += `
+                        <div style="background:#dc3545;color:white;padding:12px 18px;border-radius:8px;margin-bottom:18px;font-size:14px;font-weight:500;text-align:center;border:2px solid #c82333;">
+                            🔄 <strong>AGENT SWITCH:</strong> ${handoff.from_agent} → ${handoff.to_agent}
+                            <br><small style="opacity:0.9;">${handoff.reason}</small>
+                        </div>
+                    `;
+                }
+                
+                // Show current agent info for debugging (more visible)
+                if (response.coordinator_info && response.coordinator_info.current_agent) {
+                    html += `
+                        <div style="background:#007bff;color:white;padding:8px 16px;border-radius:8px;margin-bottom:15px;font-size:13px;text-align:center;border:2px solid #0056b3;font-weight:500;">
+                            🤖 <strong>Current Agent:</strong> ${response.coordinator_info.current_agent}
+                        </div>
+                    `;
+                }
+                
+                // Debug: Log response data
+                console.log('Response coordinator_info:', response.coordinator_info);
+                console.log('Response handoff_info:', response.handoff_info);
+                
+                // Show inline guidance if present
+                if (response.inline_guidance) {
+                    html += `<div class="inline-guidance" style="background:#fff3cd;border:1px solid #ffeeba;padding:12px 18px;border-radius:8px;color:#856404;margin-bottom:18px;font-size:15px;">${response.inline_guidance}</div>`;
+                }
+                
+                // For Living Form: Show AI response as conversation with embedded forms
+                // Only show conversation text separately if there's no form HTML or if the form HTML doesn't contain the conversation text
+                if (response.response && response.response.trim() && !response.form_html) {
+                    // Only treat as HTML if it starts with a block-level tag
+                    const blockLevelHtmlRegex = /^\s*<(div|form|h[1-6]|table|section|header|footer|main|article|nav|ul|ol|li|p|fieldset|legend|label|input|button|select|option|textarea|hr|br|img|span|style|script|link|meta|title|head|body|html)[\s>]/i;
+                    const isBlockHtml = blockLevelHtmlRegex.test(response.response);
+                    
+                    if (isBlockHtml) {
+                        // If it contains HTML, render it directly (sanitized)
+                        const sanitizedHtml = DOMPurify.sanitize(response.response);
+                        html += `<div class="ai-response" style="background:white;padding:20px;border-radius:12px;margin-bottom:20px;border:1px solid #e1e5e9;font-size:15px;line-height:1.6;box-shadow:0 2px 4px rgba(0,0,0,0.1);">${sanitizedHtml}</div>`;
+                    } else {
+                        // Apply simple text formatting instead of Markdown
+                        const formattedText = this.formatAIResponse(response.response);
+                        html += `<div class="ai-response" style="background:white;padding:20px;border-radius:12px;margin-bottom:20px;border:1px solid #e1e5e9;font-size:15px;line-height:1.6;box-shadow:0 2px 4px rgba(0,0,0,0.1);">${formattedText}</div>`;
+                    }
+                }
+                
+                // Show any extracted form HTML if present
+                if (response.form_html) {
+                    html += response.form_html;
+                }
+                
+                // If neither response nor form, show a fallback
+                if (!response.response && !response.form_html) {
+                    html += '<div style="padding:20px;text-align:center;color:#666;">Continue with your tire search...</div>';
+                }
+                
+                // Append the new content below existing content
+                this.mainFormArea.insertAdjacentHTML('beforeend', html);
+                
+                // Update the notepad if content is provided
+                if (response.notepad_content) {
+                    this.updateNotepad(response.notepad_content);
+                }
+                
+                // Store response in history for internal tracking
+                this.conversationHistory.push({
+                    type: 'assistant',
+                    content: response,
+                    timestamp: new Date()
+                });
+                
+                // Set up form submission handlers for any new forms
+                this.setupFormHandlers();
+                
+                // Debug: Check if new forms are present
+                const newForms = this.mainFormArea.querySelectorAll('form');
+                console.log('Total forms after adding new form:', newForms.length);
+                newForms.forEach((form, index) => {
+                    console.log(`Form ${index}:`, form);
+                    const submitButton = form.querySelector('button[type="submit"]');
+                    console.log(`Form ${index} submit button:`, submitButton);
+                });
+                
+                // Scroll to the new form
+                this.mainFormArea.scrollTop = this.mainFormArea.scrollHeight;
+            }
+
+            setupFormHandlers() {
+                // This method is now deprecated - using event delegation instead
+                // Keeping for backward compatibility but not needed
+                console.log('setupFormHandlers called - using event delegation instead');
+            }
+
+            renderError(message) {
+                this.mainFormArea.innerHTML = `<div style="color:#dc3545;padding:20px;text-align:center;font-size:18px;">${this.escapeHtml(message)}</div>`;
+            }
+
+            updateCostTracker(costInfo) {
+                this.sessionCost += costInfo.cost;
+                this.messageCount++;
+                this.sessionCostElement.textContent = this.sessionCost.toFixed(4);
+                this.interactionCountElement.textContent = this.messageCount;
+            }
+
+            showLoading() {
+                this.loading.classList.add('active');
+            }
+
+            hideLoading() {
+                this.loading.classList.remove('active');
+            }
+
+            formatAIResponse(text) {
+                // Simple text formatting without complex Markdown parsing
+                let formatted = this.escapeHtml(text);
+                
+                // Convert line breaks to <br> tags
+                formatted = formatted.replace(/\n/g, '<br>');
+                
+                // Convert **bold** to <strong>
+                formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+                
+                // Convert ### headers to <h3>
+                formatted = formatted.replace(/^### (.*?)$/gm, '<h3 style="color:#667eea;margin:15px 0 10px 0;font-size:18px;">$1</h3>');
+                
+                // Convert numbered lists (1. item)
+                formatted = formatted.replace(/^(\d+)\. (.*?)$/gm, '<div style="margin:8px 0;"><strong>$1.</strong> $2</div>');
+                
+                // Convert bullet points (- item)
+                formatted = formatted.replace(/^- (.*?)$/gm, '<div style="margin:8px 0;margin-left:15px;">• $1</div>');
+                
+                // Convert code blocks (`code`)
+                formatted = formatted.replace(/`(.*?)`/g, '<code style="background:#f8f9fa;padding:2px 6px;border-radius:4px;font-family:monospace;font-size:0.9em;">$1</code>');
+                
+                // Add paragraph breaks for double line breaks
+                formatted = formatted.replace(/(<br>){2,}/g, '</p><p style="margin-bottom:12px;">');
+                
+                // Wrap in paragraph tags
+                formatted = `<p style="margin-bottom:12px;">${formatted}</p>`;
+                
+                // Sanitize the final HTML for security
+                return DOMPurify.sanitize(formatted);
+            }
+
+            escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            new LivingFormApp();
+        });
+    </script>
+</body>
+</html> 

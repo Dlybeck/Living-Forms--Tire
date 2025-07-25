@@ -6,7 +6,6 @@ Combines internal thinking process (like Scribe) with user interaction and form 
 import re
 import logging
 from typing import Dict, Any, Optional, Tuple
-from agents.base_agent import BaseAgent
 from agents.ai_client import AIClient
 from agents.cost_manager import CostManager, ModelType
 from agents.form_builder import FormBuilder
@@ -15,15 +14,20 @@ from prompts.prompt import prompt
 
 logger = logging.getLogger(__name__)
 
-class UnifiedTireAgent(BaseAgent):
+class UnifiedTireAgent:
     """
     Unified Tire Sales Assistant Agent
     Combines internal thinking process with user interaction and form generation
     """
     
     def __init__(self, ai_client: AIClient, cost_manager: CostManager, form_builder: FormBuilder):
-        super().__init__(ai_client, cost_manager, form_builder, "UnifiedTireAgent")
+        self.ai_client = ai_client
+        self.cost_manager = cost_manager
+        self.form_builder = form_builder
         self.function_parser = FunctionCallParser()
+        self.agent_name = "UnifiedTireAgent"
+        
+        logger.info(f"Initialized {self.agent_name}")
     
     def get_system_prompt(self) -> str:
         return prompt
@@ -225,3 +229,15 @@ Remember to:
                     conversation_text = conversation_text_from_form
         
         return internal_analysis, conversation_text, form_html 
+    
+    def _create_error_response(self, error_message: str) -> Dict[str, Any]:
+        """Create an error response"""
+        return {
+            "response": "I'm experiencing some technical difficulties. Please try again.",
+            "conversation_text": "I'm experiencing some technical difficulties. Please try again.",
+            "form_html": "",
+            "enhanced_notepad": "",
+            "cost_info": {"total_cost": 0.0, "model_used": "error"},
+            "current_agent": self.agent_name,
+            "agent_display_name": "Tire Sales Assistant"
+        } 
