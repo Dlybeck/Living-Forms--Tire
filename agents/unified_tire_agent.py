@@ -11,7 +11,7 @@ from agents.ai_client import AIClient
 from agents.cost_manager import CostManager, ModelType
 from agents.form_builder import FormBuilder
 from agents.function_call_parser import FunctionCallParser
-from prompts.unified_tire_prompt import UNIFIED_TIRE_ASSISTANT_PROMPT
+from prompts.prompt import prompt
 
 logger = logging.getLogger(__name__)
 
@@ -26,10 +26,10 @@ class UnifiedTireAgent(BaseAgent):
         self.function_parser = FunctionCallParser()
     
     def get_system_prompt(self) -> str:
-        return UNIFIED_TIRE_ASSISTANT_PROMPT
+        return prompt
     
     def get_agent_prompt(self) -> str:
-        return UNIFIED_TIRE_ASSISTANT_PROMPT
+        return prompt
     
     def _get_agent_display_name(self) -> str:
         return "Tire Sales Assistant"

@@ -7,6 +7,8 @@ import uvicorn
 from datetime import datetime
 from typing import Dict, Optional, Any
 import logging
+from dotenv import load_dotenv
+load_dotenv()
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
