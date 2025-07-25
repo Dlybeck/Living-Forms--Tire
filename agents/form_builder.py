@@ -98,12 +98,10 @@ class FormBuilder:
         checkboxes_html = ""
         for option in options:
             checkboxes_html += f"""
-            <div style="margin-bottom:4px;">
-                <label style="display:flex;align-items:center;cursor:pointer;">
-                    <input type="checkbox" name="{name}" value="{option}" style="margin-right:6px;">
-                    <span>{option}</span>
-                </label>
-            </div>
+            <label style="display:flex;align-items:center;cursor:pointer;font-size:14px;margin-bottom:1px;">
+                <input type="checkbox" name="{name}" value="{option}" style="margin-right:4px;">
+                <span>{option}</span>
+            </label>
             """
         
         return self._create_field_html(
@@ -137,17 +135,17 @@ class FormBuilder:
             placeholder="Ask a question, add details, or tell me anything..."
         )
         
+        conversation_html = f'<div style="color:#495057;">{self._format_conversation_text(conversation_text)}</div>' if conversation_text else ""
+        
         return f"""
-        <div style="background:#f8f9fa;padding:15px;border-radius:8px;margin:15px 0;">
-            {self._format_conversation_text(conversation_text)}
-            <form id="tire-form" style="margin-top:10px;">
-                {fields_content}
-                {additional_notes}
-                <button type="submit" style="background:#007bff;color:white;padding:10px 20px;border:none;border-radius:6px;cursor:pointer;font-size:16px;">
-                    {submit_text}
-                </button>
-            </form>
-        </div>
+        <form id="tire-form" style="max-width:600px;">
+            {conversation_html}
+            {fields_content}
+            {additional_notes}
+            <button type="submit" style="background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);color:white;padding:12px 24px;border:none;border-radius:8px;cursor:pointer;font-size:16px;font-weight:600;">
+                {submit_text}
+            </button>
+        </form>
         """
     
     def create_embedded_form(self, conversation_with_fields: str, submit_text: str = "Continue") -> str:
@@ -197,44 +195,45 @@ class FormBuilder:
         processed_content = processed_content.replace('•', '• ')
         
         return f"""
-        <div style="background:#f8f9fa;padding:15px;border-radius:8px;margin:15px 0;">
-            <form id="tire-form">
-                <div style="background:white;padding:12px;border-radius:6px;margin-bottom:10px;border-left:4px solid #007bff;">
-                    <div style="margin:0;color:#495057;line-height:1.4;">{processed_content}</div>
-                </div>
-                {additional_notes}
-                <button type="submit" style="background:#007bff;color:white;padding:10px 20px;border:none;border-radius:6px;cursor:pointer;font-size:16px;">
-                    {submit_text}
-                </button>
-            </form>
-        </div>
+        <form id="tire-form" style="max-width:600px;">
+            <div style="color:#495057;">{processed_content}</div>
+            {additional_notes}
+            <button type="submit" style="background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);color:white;padding:12px 24px;border:none;border-radius:8px;cursor:pointer;font-size:16px;font-weight:600;">
+                {submit_text}
+            </button>
+        </form>
         """
     
     def _create_field_html(self, field_type: str, name: str, label: str, required: bool = False,
                           placeholder: Optional[str] = None, help_text: Optional[str] = None,
                           **kwargs) -> str:
-        """Create HTML for any field type"""
+        """Create clean, minimal HTML for any field type"""
         required_attr = "required" if required else ""
         placeholder_attr = f'placeholder="{placeholder}"' if placeholder else ""
-        help_html = f'<small style="color:#6c757d;display:block;margin-top:3px;">{help_text}</small>' if help_text else ""
+        help_html = f'<div style="color:#6c757d;font-size:13px;">{help_text}</div>' if help_text else ""
+        
+        # Common input styling for consistency - proper spacing
+        input_style = "width:100%;padding:8px 12px;border:1px solid #ddd;border-radius:6px;font-size:14px;font-family:inherit;transition:border-color 0.2s;"
         
         if field_type == "text":
-            input_html = f'<input type="text" name="{name}" {required_attr} {placeholder_attr} style="width:100%;padding:12px;border:2px solid #e9ecef;border-radius:6px;font-size:14px;font-family: inherit;">'
+            input_html = f'<input type="text" name="{name}" {required_attr} {placeholder_attr} style="{input_style}">'
         elif field_type == "textarea":
             rows = kwargs.get('rows', 3)
-            input_html = f'<textarea name="{name}" {required_attr} {placeholder_attr} rows="{rows}" style="width:100%;padding:12px;border:2px solid #e9ecef;border-radius:6px;font-size:14px;resize:vertical;font-family: inherit;"></textarea>'
+            input_html = f'<textarea name="{name}" {required_attr} {placeholder_attr} rows="{rows}" style="{input_style}resize:vertical;"></textarea>'
         elif field_type == "select":
             options_html = kwargs.get('options_html', '')
-            input_html = f'<select name="{name}" {required_attr} style="width:100%;padding:12px;border:2px solid #e9ecef;border-radius:6px;font-size:14px;font-family: inherit;"><option value="">Select an option</option>{options_html}</select>'
+            input_html = f'<select name="{name}" {required_attr} style="{input_style}"><option value="">Select an option</option>{options_html}</select>'
         elif field_type == "checkbox":
             checkboxes_html = kwargs.get('checkboxes_html', '')
-            input_html = checkboxes_html
+            # Very tight checkbox spacing
+            input_html = f'<div style="margin-top:1px;">{checkboxes_html}</div>'
         else:
             input_html = ""
         
+        # Clean field container with very tight spacing between fields
         return f"""
-        <div style="margin-bottom:5px;display:inline-block;width:100%;">
-            <label style="display:block;margin-bottom:2px;font-weight:500;color:#495057;">{label}</label>
+        <div style="margin-bottom:3px;">
+            <label style="display:block;font-weight:500;color:#333;font-size:14px;margin-bottom:1px;">{label}</label>
             {input_html}
             {help_html}
         </div>
@@ -267,11 +266,7 @@ class FormBuilder:
         # Preserve line breaks by converting them to <br> tags
         formatted_text = text.replace('\n', '<br>')
         
-        return f"""
-        <div style="background:white;padding:12px;border-radius:6px;margin-bottom:10px;border-left:4px solid #007bff;">
-            <div style="margin:0;color:#495057;line-height:1.4;">{formatted_text}</div>
-        </div>
-        """
+        return formatted_text
     
     def call_function(self, func_name: str, args_str: str) -> str:
         """Call a form builder function with parsed arguments"""
