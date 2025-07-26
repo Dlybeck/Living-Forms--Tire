@@ -180,6 +180,9 @@ class ProfessionalTireFormsApp {
         // Mark form as completed and disable
         this.markFormCompleted(form, formObject);
         
+        // Scroll to loading indicator
+        this.scrollToBottom();
+        
         this.showLoading();
         try {
             const response = await this.callChatAPI('Form submission', formObject);
@@ -354,7 +357,7 @@ class ProfessionalTireFormsApp {
         });
         
         // Scroll to new section
-        this.formWorkspace.scrollTop = this.formWorkspace.scrollHeight;
+        this.scrollToBottom();
     }
 
     showLoading() {
@@ -399,6 +402,14 @@ class ProfessionalTireFormsApp {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
+    }
+
+    scrollToBottom() {
+        // Smooth scroll to bottom of form workspace
+        this.formWorkspace.scrollTo({
+            top: this.formWorkspace.scrollHeight,
+            behavior: 'smooth'
+        });
     }
 }
 

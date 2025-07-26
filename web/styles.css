@@ -61,6 +61,8 @@ body {
     padding: 40px;
     overflow-y: auto;
     background: #fafafa;
+    height: 100vh;
+    scroll-behavior: smooth;
 }
 
 .form-section {
@@ -126,6 +128,10 @@ body {
     display: flex;
     flex-direction: column;
     border-left: 3px solid #34495e;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow: hidden;
 }
 
 .notepad-header {
@@ -506,6 +512,8 @@ body {
         width: 100%;
         max-height: 300px;
         order: 2;
+        position: relative;
+        height: auto;
     }
 
     .form-main {
@@ -514,6 +522,7 @@ body {
 
     .form-workspace {
         padding: 15px;
+        height: auto;
     }
 
     .form-section {
