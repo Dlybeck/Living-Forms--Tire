@@ -2,10 +2,18 @@ import os
 import logging
 import asyncio
 from typing import Dict, Optional, Any
-from agents.cost_manager import ModelType
+from enum import Enum
 import aiohttp
 
 logger = logging.getLogger(__name__)
+
+class ModelType(Enum):
+    """Simple model type enum"""
+    O4_MINI = "o4-mini"
+    GPT_4_1 = "gpt-4.1"
+    GPT_4_1_MINI = "gpt-4.1-mini"
+    GPT_4O_MINI = "gpt-4o-mini"
+    CLAUDE_3_5_SONNET = "claude-3-5-sonnet"
 
 class AIClient:
     """
@@ -53,7 +61,7 @@ class AIClient:
             }
         }
         
-        logger.info("AI Client initialized with simplified model set")
+        logger.debug("AI Client initialized with simplified model set")
     
     async def generate_response(self, user_message: str, conversation_context: Dict[str, Any], 
                               model_type: ModelType, agent_prompt: str, response_format: str = "text", 
@@ -76,12 +84,8 @@ class AIClient:
             else:
                 raise ValueError(f"Unsupported provider: {model_config['provider']}")
             
-            # Calculate cost
-            cost = self._calculate_cost(response['usage'], model_type)
-            
             return {
                 'text': response['text'],
-                'cost': cost,
                 'usage': response['usage'],
                 'model': model_type.value,
                 'provider': model_config['provider']
@@ -92,7 +96,6 @@ class AIClient:
             # Simple fallback response
             return {
                 'text': "I'm experiencing some technical difficulties right now. Let me help you with basic tire information. What's your vehicle's make, model, and year?",
-                'cost': 0.0,
                 'usage': {'prompt_tokens': 0, 'completion_tokens': 0, 'total_tokens': 0},
                 'model': 'fallback',
                 'provider': 'fallback'
@@ -108,7 +111,7 @@ class AIClient:
         # Add function documentation if provided
         if function_documentation:
             system_prompt += f"\n\n**FUNCTION DOCUMENTATION:**\n{function_documentation}"
-            logger.info(f"Added function documentation to prompt: {function_documentation[:200]}...")
+            logger.debug(f"Added function documentation to prompt")
         
         # Add conversation context
         context_info = self._format_conversation_context(conversation_context)
@@ -116,7 +119,7 @@ class AIClient:
         # Build the full prompt
         prompt = f"{system_prompt}\n\n{context_info}\n\nUser: {user_message}\n\nAssistant:"
         
-        logger.info(f"Built prompt length: {len(prompt)} characters")
+        logger.debug(f"Built prompt length: {len(prompt)} characters")
         logger.debug(f"Prompt ends with: {prompt[-200:]}...")
         
         return prompt
@@ -126,7 +129,7 @@ class AIClient:
         context_parts = []
         
         # Debug logging
-        logger.info(f"Formatting conversation context: {conversation_context}")
+        logger.debug(f"Formatting conversation context")
         
         # Add current goal if available
         if 'current_goal' in conversation_context:
@@ -159,7 +162,7 @@ class AIClient:
             context_parts.append(f"AI Notepad:\n{conversation_context['notepad_summary']}")
         
         formatted_context = "Context:\n" + "\n".join(f"- {part}" for part in context_parts) if context_parts else ""
-        logger.info(f"Formatted context: {formatted_context}")
+        logger.debug(f"Formatted context")
         
         return formatted_context
     
@@ -226,25 +229,5 @@ class AIClient:
                 else:
                     error_text = await response.text()
                     raise Exception(f"Anthropic API error: {response.status} - {error_text}")
-    
-    def _calculate_cost(self, usage: Dict[str, int], model_type: ModelType) -> float:
-        """Calculate cost based on token usage and model"""
-        # Simplified cost calculation
-        prompt_tokens = usage.get('prompt_tokens', 0)
-        completion_tokens = usage.get('completion_tokens', 0)
-        
-        # Rough cost estimates per 1K tokens
-        costs = {
-            ModelType.O4_MINI: 0.001375,     # $1.375 per 1K tokens (input + output average)
-            ModelType.GPT_4_1: 0.0025,       # $2.50 per 1K tokens (input + output average)
-            ModelType.GPT_4O_MINI: 0.00015,  # $0.15 per 1K tokens
-            ModelType.GPT_4_1_MINI: 0.00015,  # $0.15 per 1K tokens
-            ModelType.CLAUDE_3_5_SONNET: 0.0003,  # $0.30 per 1K tokens
-        }
-        
-        cost_per_1k = costs.get(model_type, 0.00015)
-        total_tokens = prompt_tokens + completion_tokens
-        
-        return (total_tokens / 1000) * cost_per_1k
     
  

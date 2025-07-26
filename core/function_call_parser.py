@@ -1,7 +1,7 @@
 import re
 import logging
 from typing import List, Tuple, Optional, Dict, Any
-from agents.form_builder import FormBuilder
+from .form_builder import FormBuilder
 
 logger = logging.getLogger(__name__)
 

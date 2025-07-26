@@ -10,25 +10,24 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.WARNING)
 logger = logging.getLogger(__name__)
 
 # Import our modules
-from agents.simplified_coordinator import SimplifiedCoordinator
-from agents.ai_client import AIClient
-from agents.cost_manager import CostManager, ModelType
-from agents.form_builder import FormBuilder
+from core.simplified_coordinator import SimplifiedCoordinator
+from core.ai_client import AIClient, ModelType
+
+from core.form_builder import FormBuilder
 
 app = FastAPI(title="Living Form Tire Sales Agent", version="1.0.0")
 
 # Mount templates
-templates = Jinja2Templates(directory="templates")
+templates = Jinja2Templates(directory="web")
 
 # Initialize components
-cost_manager = CostManager(config={"conversation_budget": 0.20})
 ai_client = AIClient()
 form_builder = FormBuilder()
-agent_coordinator = SimplifiedCoordinator(ai_client, cost_manager, form_builder)
+agent_coordinator = SimplifiedCoordinator(ai_client, form_builder)
 
 # Request/Response models
 class ChatMessage(BaseModel):
@@ -41,7 +40,7 @@ class ChatResponse(BaseModel):
     form_html: Optional[str] = None
     inline_guidance: Optional[str] = None
     conversation_state: str
-    cost_info: Dict[str, Any]
+
     session_id: str
     notepad_content: Optional[str] = None  # Add notepad content to response
     current_agent: Optional[str] = None  # Current agent name
@@ -75,7 +74,6 @@ async def chat_endpoint(chat_request: ChatMessage):
             form_html=response_data.get("form_html"),
             inline_guidance=response_data.get("inline_guidance"),
             conversation_state=response_data.get("coordinator_info", {}).get("current_step", "unknown"),
-            cost_info=response_data.get("cost_info", {"total_cost": 0.0}),
             session_id=chat_request.session_id,
             notepad_content=response_data.get("enhanced_notepad", response_data.get("notepad_content", "")),
             current_agent=response_data.get("current_agent", "Unknown"),
@@ -104,23 +102,7 @@ async def get_session_notepad(session_id: str):
         "last_updated": datetime.now().isoformat()
     }
 
-@app.get("/session/{session_id}/cost")
-async def get_session_costs(session_id: str):
-    """Get cost breakdown for a session"""
-    session_info = await agent_coordinator.get_session_info(session_id)
-    
-    if "error" in session_info:
-        raise HTTPException(status_code=404, detail="Session not found")
-    
-    # Get cost summary from cost manager
-    cost_summary = cost_manager.get_cost_summary(session_info)
-    
-    return {
-        "total_cost": cost_summary.get("total_cost", 0.0),
-        "interactions": cost_summary.get("interactions_count", 0),
-        "cost_breakdown": cost_summary.get("cost_breakdown", {}),
-        "budget_remaining": cost_summary.get("budget_remaining", 0.0)
-    }
+
 
 @app.get("/health")
 async def health_check():
@@ -147,8 +129,7 @@ async def test_ai_endpoint():
         )
         test_results["openai_o4_mini"] = {
             "status": "success",
-            "model": response.get("model", "unknown"),
-            "cost": response.get("cost", 0.0)
+            "model": response.get("model", "unknown")
         }
     except Exception as e:
         test_results["openai_gpt_4o_mini"] = {
@@ -165,8 +146,7 @@ async def test_ai_endpoint():
         )
         test_results["anthropic_claude_3_5"] = {
             "status": "success",
-            "model": response.get("model", "unknown"),
-            "cost": response.get("cost", 0.0)
+            "model": response.get("model", "unknown")
         }
     except Exception as e:
         test_results["anthropic_claude_3_5"] = {

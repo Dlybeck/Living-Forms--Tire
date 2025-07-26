@@ -6,11 +6,11 @@ Combines internal thinking process (like Scribe) with user interaction and form 
 import re
 import logging
 from typing import Dict, Any, Optional, Tuple
-from agents.ai_client import AIClient
-from agents.cost_manager import CostManager, ModelType
-from agents.form_builder import FormBuilder
-from agents.function_call_parser import FunctionCallParser
-from prompts.prompt import prompt
+from .ai_client import AIClient, ModelType
+
+from .form_builder import FormBuilder
+from .function_call_parser import FunctionCallParser
+from config.prompt import prompt
 
 logger = logging.getLogger(__name__)
 
@@ -20,17 +20,13 @@ class UnifiedTireAgent:
     Combines internal thinking process with user interaction and form generation
     """
     
-    def __init__(self, ai_client: AIClient, cost_manager: CostManager, form_builder: FormBuilder):
+    def __init__(self, ai_client: AIClient, form_builder: FormBuilder):
         self.ai_client = ai_client
-        self.cost_manager = cost_manager
         self.form_builder = form_builder
         self.function_parser = FunctionCallParser()
         self.agent_name = "UnifiedTireAgent"
         
-        logger.info(f"Initialized {self.agent_name}")
-    
-    def get_system_prompt(self) -> str:
-        return prompt
+        logger.debug(f"Initialized {self.agent_name}")
     
     def get_agent_prompt(self) -> str:
         return prompt
@@ -54,11 +50,11 @@ class UnifiedTireAgent:
             
             # Extract internal analysis and external components
             response_text = response.get("text", "")
-            logger.info(f"Raw AI response: {response_text[:200]}...")
+            logger.debug(f"Raw AI response: {response_text[:200]}...")
             
             internal_analysis, conversation_text, form_html = self._parse_unified_response(response_text)
             
-            logger.info(f"Parsed - Internal: {len(internal_analysis)} chars, Conversation: {len(conversation_text)} chars, Form: {len(form_html)} chars")
+            logger.debug(f"Parsed - Internal: {len(internal_analysis)} chars, Conversation: {len(conversation_text)} chars, Form: {len(form_html)} chars")
             
             # Update roadmap with internal analysis (like Scribe did)
             if internal_analysis:
@@ -71,10 +67,7 @@ class UnifiedTireAgent:
                 "conversation_text": conversation_text,
                 "form_html": form_html,
                 "enhanced_notepad": internal_analysis,
-                "cost_info": {
-                    "total_cost": response.get("cost", 0.0),
-                    "model_used": response.get("model_used", "unknown")
-                },
+
                 "current_agent": self.agent_name,
                 "agent_display_name": self._get_agent_display_name()
             }
@@ -181,8 +174,7 @@ Remember to:
             function_documentation=self.function_parser.get_function_documentation()
         )
         
-        # Track cost
-        self.cost_manager.track_cost("unified_agent", response["cost"], roadmap)
+
         
         return response
     
@@ -206,7 +198,7 @@ Remember to:
         
         # Check if we have embedded function calls in the conversation text
         if conversation_text and re.search(r'\{[^}]+\}', conversation_text):
-            logger.info("Found embedded function calls in conversation text, using embedded form method")
+            logger.debug("Found embedded function calls in conversation text, using embedded form method")
             form_html = self.form_builder.create_embedded_form(conversation_text)
         else:
             # Only use function call parser if no embedded calls found
@@ -237,7 +229,7 @@ Remember to:
             "conversation_text": "I'm experiencing some technical difficulties. Please try again.",
             "form_html": "",
             "enhanced_notepad": "",
-            "cost_info": {"total_cost": 0.0, "model_used": "error"},
+
             "current_agent": self.agent_name,
             "agent_display_name": "Tire Sales Assistant"
         } 

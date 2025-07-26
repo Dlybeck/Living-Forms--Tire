@@ -229,23 +229,7 @@
             transform: translateY(-2px);
         }
 
-        /* COST TRACKER */
-        .cost-tracker {
-            background: rgba(255,255,255,0.15);
-            padding: 10px 20px;
-            font-size: 14px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-        }
 
-        .cost-tracker .cost-item {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-weight: 500;
-        }
 
         /* AI RESPONSE STYLING */
         .ai-response {
@@ -544,11 +528,7 @@
                 font-size: 24px;
             }
 
-            .cost-tracker {
-                flex-direction: column;
-                gap: 10px;
-                align-items: flex-start;
-            }
+
 
             .form-workspace {
                 padding: 15px;
@@ -570,15 +550,7 @@
                 <p class="subtitle">Expert guidance through intelligent forms</p>
             </div>
             
-            <!-- Cost tracker in header -->
-            <div class="cost-tracker">
-                <div class="cost-item">
-                    💰 Session Cost: $<span id="session-cost">0.00</span>
-                </div>
-                <div class="cost-item">
-                    📝 Forms Completed: <span id="interaction-count">0</span>
-                </div>
-            </div>
+
 
             <!-- Main form workspace -->
             <div class="form-workspace" id="form-workspace">
@@ -614,7 +586,7 @@
             constructor() {
                 this.sessionId = this.generateSessionId();
                 this.messageCount = 0;
-                this.sessionCost = 0.00;
+
                 this.initializeElements();
                 this.setupEventListeners();
                 this.loadInitialForm();
@@ -627,8 +599,7 @@
             initializeElements() {
                 this.formWorkspace = document.getElementById('form-workspace');
                 this.loading = document.getElementById('loading');
-                this.sessionCostElement = document.getElementById('session-cost');
-                this.interactionCountElement = document.getElementById('interaction-count');
+
                 this.notepadSidebar = document.getElementById('notepad-sidebar');
                 this.notepadContent = document.getElementById('notepad-content');
                 this.notepadToggle = document.getElementById('notepad-toggle');
@@ -847,7 +818,7 @@
                     const response = await this.callChatAPI('Form submission', formObject);
                     this.hideLoading();
                     this.addNewFormSection(response);
-                    this.updateCostTracker(response.cost_info);
+
                 } catch (error) {
                     console.error('Form submission error:', error);
                     this.hideLoading();
@@ -1039,19 +1010,7 @@
                 this.formWorkspace.scrollTop = this.formWorkspace.scrollHeight;
             }
 
-            updateCostTracker(costInfo) {
-                if (costInfo && typeof costInfo.cost === 'number') {
-                    this.sessionCost += costInfo.cost;
-                    this.messageCount++;
-                    this.sessionCostElement.textContent = this.sessionCost.toFixed(4);
-                    this.interactionCountElement.textContent = this.messageCount;
-                } else {
-                    // Handle case where cost_info is missing or invalid
-                    this.messageCount++;
-                    this.interactionCountElement.textContent = this.messageCount;
-                    console.warn('Cost info missing or invalid:', costInfo);
-                }
-            }
+
 
             showLoading() {
                 this.loading.classList.add('active');

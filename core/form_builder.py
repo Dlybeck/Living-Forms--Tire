@@ -33,10 +33,11 @@ class FormBuilder:
         )
     
     def create_textarea_field(self, name: str, label: Optional[str] = None, required: bool = False,
-                             placeholder: Optional[str] = None, rows: int = 3, help_text: Optional[str] = None) -> str:
+                             placeholder: Optional[str] = None, rows: int = 3, help_text: Optional[str] = None, 
+                             skip_additional_notes_check: bool = False) -> str:
         """Create a multi-line textarea field"""
-        if name == "additional_notes":
-            logger.warning("AI attempted to manually create additional_notes field - this is automatically added. Skipping.")
+        if name == "additional_notes" and not skip_additional_notes_check:
+            logger.debug("AI attempted to manually create additional_notes field - this is automatically added. Skipping.")
             return ""
         
         self.field_count += 1
@@ -132,7 +133,8 @@ class FormBuilder:
             name="additional_notes",
             label="Additional Thoughts (Optional)",
             required=False,
-            placeholder="Ask a question, add details, or tell me anything..."
+            placeholder="Ask a question, add details, or tell me anything...",
+            skip_additional_notes_check=True
         )
         
         conversation_html = f'<div style="color:#495057;">{self._format_conversation_text(conversation_text)}</div>' if conversation_text else ""
@@ -157,7 +159,8 @@ class FormBuilder:
             name="additional_notes",
             label="Additional Thoughts (Optional)",
             required=False,
-            placeholder="Ask a question, add details, or tell me anything..."
+            placeholder="Ask a question, add details, or tell me anything...",
+            skip_additional_notes_check=True
         )
         
 

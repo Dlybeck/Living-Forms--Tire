@@ -7,11 +7,10 @@ import asyncio
 import logging
 from datetime import datetime
 from typing import Dict, Any, Optional, List
-from agents.unified_tire_agent import UnifiedTireAgent
-from agents.ai_client import AIClient
-from agents.cost_manager import CostManager
-from agents.form_builder import FormBuilder
-from utils.state_manager import StateManager, ConversationState
+from .unified_tire_agent import UnifiedTireAgent
+from .ai_client import AIClient
+
+from .form_builder import FormBuilder
 
 logger = logging.getLogger(__name__)
 
@@ -20,22 +19,20 @@ class SimplifiedCoordinator:
     Simplified coordinator using only the Unified Tire Agent
     """
     
-    def __init__(self, ai_client: AIClient, cost_manager: CostManager, form_builder: FormBuilder):
+    def __init__(self, ai_client: AIClient, form_builder: FormBuilder):
         self.ai_client = ai_client
-        self.cost_manager = cost_manager
         self.form_builder = form_builder
         
         # Initialize only the unified agent
-        self.unified_agent = UnifiedTireAgent(ai_client, cost_manager, form_builder)
+        self.unified_agent = UnifiedTireAgent(ai_client, form_builder)
         
-        # Initialize management components
-        self.state_manager = StateManager()
+
         
         # Session management
         self.active_sessions: Dict[str, Dict[str, Any]] = {}
         self._session_lock = asyncio.Lock()
         
-        logger.info("SimplifiedCoordinator initialized with Unified Tire Agent")
+        logger.debug("SimplifiedCoordinator initialized with Unified Tire Agent")
     
     async def process_message(self, user_message: str, session_id: str, form_data: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
@@ -45,13 +42,8 @@ class SimplifiedCoordinator:
             # Get or create session
             session = await self._get_or_create_session(session_id)
             
-            # Get current state
-            state = await self.state_manager.get_state()
-            if not state:
-                state = await self.state_manager.initialize_session(session_id)
-            
             # Build conversation context
-            conversation_context = await self._build_conversation_context(session_id, state, form_data)
+            conversation_context = await self._build_conversation_context(session_id, form_data)
             
             # Process with Unified Tire Agent (handles everything)
             response = await self.unified_agent.process_message(
@@ -92,13 +84,13 @@ class SimplifiedCoordinator:
                     'ai_notepad': '',
                     'current_step': 'initial'
                 }
-                logger.info(f"Created new session: {session_id}")
+                logger.debug(f"Created new session: {session_id}")
             else:
                 self.active_sessions[session_id]['last_activity'] = datetime.now().isoformat()
             
             return self.active_sessions[session_id]
     
-    async def _build_conversation_context(self, session_id: str, state: ConversationState, form_data: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    async def _build_conversation_context(self, session_id: str, form_data: Optional[Dict[str, Any]]) -> Dict[str, Any]:
         """
         Build conversation context for the unified agent
         """
@@ -111,7 +103,6 @@ class SimplifiedCoordinator:
             'conversation_history': conversation_history,
             'current_step': session.get('current_step', 'unknown'),
             'form_data': form_data or {},
-            'state': state,
             'needs_form': True
         }
         
@@ -156,10 +147,7 @@ class SimplifiedCoordinator:
             "conversation_text": f"I apologize, but I encountered an error: {error_message}. Please try again.",
             "form_html": "",
             "enhanced_notepad": "",
-            "cost_info": {
-                "total_cost": 0.0,
-                "model_used": "error"
-            },
+
             "current_agent": "UnifiedTireAgent",
             "agent_display_name": "Tire Sales Assistant",
             "coordinator_info": {
@@ -184,21 +172,7 @@ class SimplifiedCoordinator:
             'agent_type': 'unified_system'
         }
     
-    async def cleanup_expired_sessions(self):
-        """
-        Clean up expired sessions
-        """
-        current_time = datetime.now()
-        expired_sessions = []
-        
-        for session_id, session in self.active_sessions.items():
-            last_activity = datetime.fromisoformat(session.get('last_activity', current_time.isoformat()))
-            if (current_time - last_activity).total_seconds() > 3600:  # 1 hour timeout
-                expired_sessions.append(session_id)
-        
-        for session_id in expired_sessions:
-            del self.active_sessions[session_id]
-            logger.info(f"Cleaned up expired session: {session_id}")
+
     
     async def get_system_status(self) -> Dict[str, Any]:
         """
