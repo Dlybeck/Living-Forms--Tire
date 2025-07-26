@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 import uvicorn
 from datetime import datetime
@@ -24,6 +25,9 @@ app = FastAPI(title="Living Form Tire Sales Agent", version="1.0.0")
 # Mount templates
 templates = Jinja2Templates(directory="web")
 
+# Mount static files
+app.mount("/static", StaticFiles(directory="web"), name="static")
+
 # Initialize components
 ai_client = AIClient()
 form_builder = FormBuilder()
@@ -31,16 +35,16 @@ coordinator = Coordinator(ai_client, form_builder)
 
 # Request/Response models
 class ChatMessage(BaseModel):
-    message: str
-    session_id: str
-    form_data: Optional[Dict[str, Any]] = None
+    request_type: str  # e.g., "form_submission", "initial_request"
+    session_id: str  # Unique identifier to track conversation state and history across multiple form submissions
+    form_data: Optional[Dict[str, Any]] = None  # User's form responses (vehicle details, preferences, etc.)
 
 class ChatResponse(BaseModel):
-    response: str
-    form_html: Optional[str] = None
-    conversation_state: str
-    session_id: str
-    notepad_content: Optional[str] = None
+    response: str  # AI's conversational response to display to user
+    form_html: Optional[str] = None  # Dynamically generated HTML form for next interaction
+    conversation_state: str  # Current step in tire recommendation flow: "initial", "unified_assistance", "error", "unknown"
+    session_id: str  # Echo back the session ID for frontend tracking
+    notepad_content: Optional[str] = None  # AI's internal notes and analysis about the conversation
 
 @app.get("/", response_class=HTMLResponse)
 async def get_chat_interface(request: Request):
@@ -55,7 +59,7 @@ async def chat_endpoint(chat_request: ChatMessage):
         
         # Process message through agent coordinator
         response_data = await coordinator.process_message(
-            user_message=chat_request.message,
+            user_message=chat_request.request_type,
             session_id=chat_request.session_id,
             form_data=chat_request.form_data
         )
