@@ -1,6 +1,6 @@
 import os
 import logging
-import asyncio
+
 from typing import Dict, Optional, Any
 from enum import Enum
 import aiohttp
@@ -10,15 +10,12 @@ logger = logging.getLogger(__name__)
 class ModelType(Enum):
     """Simple model type enum"""
     O4_MINI = "o4-mini"
-    GPT_4_1 = "gpt-4.1"
-    GPT_4_1_MINI = "gpt-4.1-mini"
-    GPT_4O_MINI = "gpt-4o-mini"
     CLAUDE_3_5_SONNET = "claude-3-5-sonnet"
 
 class AIClient:
     """
-    Simplified AI client for the Living Form Tire Sales Assistant
-    Handles communication with AI models with minimal complexity
+    AI client for the Living Form Tire Sales Assistant
+    Handles communication with AI models
     """
     
     def __init__(self):
@@ -32,27 +29,12 @@ class AIClient:
             'anthropic': 'https://api.anthropic.com/v1/messages'
         }
         
-        # Model mappings - simplified for core functionality
+        # Model mappings for core functionality
         self.model_mappings = {
             ModelType.O4_MINI: {
                 'provider': 'openai',
                 'model_name': 'o4-mini-2025-04-16',
                 'max_completion_tokens': 4096
-            },
-            ModelType.GPT_4_1: {
-                'provider': 'openai',
-                'model_name': 'gpt-4.1-2025-04-14',
-                'max_tokens': 4096
-            },
-            ModelType.GPT_4_1_MINI: {
-                'provider': 'openai',
-                'model_name': 'gpt-4.1-mini',
-                'max_tokens': 4096
-            },
-            ModelType.GPT_4O_MINI: {
-                'provider': 'openai',
-                'model_name': 'gpt-4o-mini',
-                'max_tokens': 4096
             },
             ModelType.CLAUDE_3_5_SONNET: {
                 'provider': 'anthropic', 
@@ -61,17 +43,17 @@ class AIClient:
             }
         }
         
-        logger.debug("AI Client initialized with simplified model set")
+        logger.debug("AI Client initialized with core model set")
     
     async def generate_response(self, user_message: str, conversation_context: Dict[str, Any], 
-                              model_type: ModelType, agent_prompt: str, response_format: str = "text", 
+                              model_type: ModelType, agent_prompt: str, 
                               function_documentation: Optional[str] = None) -> Dict[str, Any]:
         """
         Generate AI response using specified model
         """
         try:
             # Build the prompt
-            prompt = self._build_prompt(user_message, conversation_context, response_format, agent_prompt, function_documentation)
+            prompt = self._build_prompt(user_message, conversation_context, agent_prompt, function_documentation)
             
             # Get model configuration
             model_config = self.model_mappings[model_type]
@@ -102,7 +84,7 @@ class AIClient:
             }
     
     def _build_prompt(self, user_message: str, conversation_context: Dict[str, Any], 
-                     response_format: str, agent_prompt: str, function_documentation: Optional[str] = None) -> str:
+                     agent_prompt: str, function_documentation: Optional[str] = None) -> str:
         """Build prompt based on context and format requirements"""
         
         # Use the agent prompt (no fallback to old system prompt)
@@ -125,7 +107,7 @@ class AIClient:
         return prompt
     
     def _format_conversation_context(self, conversation_context: Dict[str, Any]) -> str:
-        """Format conversation context for the AI - Simplified to rely on ScribeAgent's notepad"""
+        """Format conversation context for the AI"""
         context_parts = []
         
         # Debug logging
@@ -139,10 +121,6 @@ class AIClient:
         if 'current_step' in conversation_context:
             context_parts.append(f"Current Step: {conversation_context['current_step']}")
         
-        # Add form purpose if available
-        if 'form_purpose' in conversation_context:
-            context_parts.append(f"Form Purpose: {conversation_context['form_purpose']}")
-        
         # Add form data if present (for immediate context)
         if 'form_data' in conversation_context:
             form_data = conversation_context['form_data']
@@ -150,16 +128,14 @@ class AIClient:
                 # Show what the user answered in the form
                 answers = []
                 for field, value in form_data.items():
-                    if field not in ['additional_notes', 'info_method']:  # Skip auto-added fields
+                    if field not in ['additional_notes']:  # Skip auto-added fields
                         answers.append(f"{field}: {value}")
                 if answers:
                     context_parts.append(f"Form Data: {', '.join(answers)}")
         
-        # Add notepad information if available (prefer enhanced Control Headquarters scene)
-        if 'enhanced_notepad' in conversation_context:
-            context_parts.append(f"AI Notepad (Control Headquarters):\n{conversation_context['enhanced_notepad']}")
-        elif 'notepad_summary' in conversation_context:
-            context_parts.append(f"AI Notepad:\n{conversation_context['notepad_summary']}")
+        # Add notepad information if available
+        if 'ai_notepad' in conversation_context:
+            context_parts.append(f"AI Notepad:\n{conversation_context['ai_notepad']}")
         
         formatted_context = "Context:\n" + "\n".join(f"- {part}" for part in context_parts) if context_parts else ""
         logger.debug(f"Formatted context")

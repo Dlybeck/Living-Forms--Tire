@@ -14,7 +14,7 @@ logging.basicConfig(level=logging.WARNING)
 logger = logging.getLogger(__name__)
 
 # Import our modules
-from core.simplified_coordinator import SimplifiedCoordinator
+from core.coordinator import Coordinator
 from core.ai_client import AIClient, ModelType
 
 from core.form_builder import FormBuilder
@@ -27,7 +27,7 @@ templates = Jinja2Templates(directory="web")
 # Initialize components
 ai_client = AIClient()
 form_builder = FormBuilder()
-agent_coordinator = SimplifiedCoordinator(ai_client, form_builder)
+coordinator = Coordinator(ai_client, form_builder)
 
 # Request/Response models
 class ChatMessage(BaseModel):
@@ -38,14 +38,9 @@ class ChatMessage(BaseModel):
 class ChatResponse(BaseModel):
     response: str
     form_html: Optional[str] = None
-    inline_guidance: Optional[str] = None
     conversation_state: str
-
     session_id: str
-    notepad_content: Optional[str] = None  # Add notepad content to response
-    current_agent: Optional[str] = None  # Current agent name
-    agent_display_name: Optional[str] = None  # User-friendly agent name
-    coordinator_info: Optional[Dict[str, Any]] = None  # Coordinator metadata
+    notepad_content: Optional[str] = None
 
 @app.get("/", response_class=HTMLResponse)
 async def get_chat_interface(request: Request):
@@ -58,27 +53,23 @@ async def chat_endpoint(chat_request: ChatMessage):
     try:
         logger.info(f"Processing chat request for session: {chat_request.session_id}")
         
-        # Process message through improved agent coordinator
-        response_data = await agent_coordinator.process_message(
+        # Process message through agent coordinator
+        response_data = await coordinator.process_message(
             user_message=chat_request.message,
             session_id=chat_request.session_id,
             form_data=chat_request.form_data
         )
         
         # Get session info for response
-        session_info = await agent_coordinator.get_session_info(chat_request.session_id)
+        session_info = await coordinator.get_session_info(chat_request.session_id)
         
         # Create response
         chat_response = ChatResponse(
             response=response_data.get("response") or "",
             form_html=response_data.get("form_html"),
-            inline_guidance=response_data.get("inline_guidance"),
             conversation_state=response_data.get("coordinator_info", {}).get("current_step", "unknown"),
             session_id=chat_request.session_id,
-            notepad_content=response_data.get("enhanced_notepad", response_data.get("notepad_content", "")),
-            current_agent=response_data.get("current_agent", "Unknown"),
-            agent_display_name=response_data.get("agent_display_name", "Unknown Agent"),
-            coordinator_info=response_data.get("coordinator_info", {})
+            notepad_content=response_data.get("ai_notepad", "")
         )
         
         return chat_response
@@ -89,17 +80,14 @@ async def chat_endpoint(chat_request: ChatMessage):
 
 @app.get("/session/{session_id}/notepad")
 async def get_session_notepad(session_id: str):
-    """Get the Scribe AI notepad content for a session"""
-    session_info = await agent_coordinator.get_session_info(session_id)
+    """Get the AI notepad content for a session"""
+    session_info = await coordinator.get_session_info(session_id)
     
     if "error" in session_info:
         raise HTTPException(status_code=404, detail="Session not found")
     
     return {
-        "session_id": session_id,
-        "notepad_content": session_info.get("notepad_content", ""),
-        "conversation_length": session_info.get("conversation_length", 0),
-        "last_updated": datetime.now().isoformat()
+        "notepad_content": session_info.get("ai_notepad", "")
     }
 
 
@@ -107,7 +95,7 @@ async def get_session_notepad(session_id: str):
 @app.get("/health")
 async def health_check():
     """Health check endpoint"""
-    system_status = await agent_coordinator.get_system_status()
+    system_status = await coordinator.get_system_status()
     return {
         "status": "healthy",
         "timestamp": datetime.now().isoformat(),
@@ -115,49 +103,7 @@ async def health_check():
         "system_health": system_status.get("system_health", "unknown")
     }
 
-@app.get("/test-ai")
-async def test_ai_endpoint():
-    """Test AI endpoints to check if they're working"""
-    test_results = {}
-    
-    # Test OpenAI O4-mini (primary model)
-    try:
-        response = await ai_client.generate_response(
-            user_message="Hello, this is a test message.",
-            conversation_context={"current_step": "test"},
-            model_type=ModelType.O4_MINI
-        )
-        test_results["openai_o4_mini"] = {
-            "status": "success",
-            "model": response.get("model", "unknown")
-        }
-    except Exception as e:
-        test_results["openai_gpt_4o_mini"] = {
-            "status": "failed",
-            "error": str(e)
-        }
-    
-    # Test Anthropic Claude 3.5 Sonnet (fallback)
-    try:
-        response = await ai_client.generate_response(
-            user_message="Hello, this is a test message.",
-            conversation_context={"current_step": "test"},
-            model_type=ModelType.CLAUDE_3_5_SONNET
-        )
-        test_results["anthropic_claude_3_5"] = {
-            "status": "success",
-            "model": response.get("model", "unknown")
-        }
-    except Exception as e:
-        test_results["anthropic_claude_3_5"] = {
-            "status": "failed",
-            "error": str(e)
-        }
-    
-    return {
-        "timestamp": datetime.now().isoformat(),
-        "test_results": test_results
-    }
+
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000, reload=True) 

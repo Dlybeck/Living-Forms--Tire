@@ -1,30 +1,30 @@
 """
-Simplified Agent Coordinator
-Uses only the Unified Tire Agent for all processing
+Agent Coordinator
+Uses the Unified Tire Agent for all processing
 """
 
 import asyncio
 import logging
 from datetime import datetime
 from typing import Dict, Any, Optional, List
-from .unified_tire_agent import UnifiedTireAgent
+from .tire_agent import TireAgent
 from .ai_client import AIClient
 
 from .form_builder import FormBuilder
 
 logger = logging.getLogger(__name__)
 
-class SimplifiedCoordinator:
+class Coordinator:
     """
-    Simplified coordinator using only the Unified Tire Agent
+    Coordinator using the Unified Tire Agent
     """
     
     def __init__(self, ai_client: AIClient, form_builder: FormBuilder):
         self.ai_client = ai_client
         self.form_builder = form_builder
         
-        # Initialize only the unified agent
-        self.unified_agent = UnifiedTireAgent(ai_client, form_builder)
+        # Initialize the tire agent
+        self.tire_agent = TireAgent(ai_client, form_builder)
         
 
         
@@ -32,7 +32,7 @@ class SimplifiedCoordinator:
         self.active_sessions: Dict[str, Dict[str, Any]] = {}
         self._session_lock = asyncio.Lock()
         
-        logger.debug("SimplifiedCoordinator initialized with Unified Tire Agent")
+        logger.debug("Coordinator initialized with Tire Agent")
     
     async def process_message(self, user_message: str, session_id: str, form_data: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
@@ -45,10 +45,10 @@ class SimplifiedCoordinator:
             # Build conversation context
             conversation_context = await self._build_conversation_context(session_id, form_data)
             
-            # Process with Unified Tire Agent (handles everything)
-            response = await self.unified_agent.process_message(
+            # Process with Tire Agent
+            response = await self.tire_agent.process_message(
                 user_message=user_message,
-                roadmap=session,
+                session_data=session,
                 conversation_context=conversation_context
             )
             
@@ -56,12 +56,8 @@ class SimplifiedCoordinator:
             await self._update_session_history(session, user_message, response, form_data)
             
             # Add coordinator metadata
-            response["current_agent"] = "UnifiedTireAgent"
-            response["agent_display_name"] = "Tire Sales Assistant"
             response["coordinator_info"] = {
-                "current_step": "unified_assistance",
-                "agent_type": "unified_system",
-                "unified_agent_active": True
+                "current_step": "unified_assistance"
             }
             
             return response
@@ -78,15 +74,12 @@ class SimplifiedCoordinator:
             if session_id not in self.active_sessions:
                 self.active_sessions[session_id] = {
                     'session_id': session_id,
-                    'created_at': datetime.now().isoformat(),
-                    'last_activity': datetime.now().isoformat(),
                     'conversation_history': [],
                     'ai_notepad': '',
                     'current_step': 'initial'
                 }
                 logger.debug(f"Created new session: {session_id}")
-            else:
-                self.active_sessions[session_id]['last_activity'] = datetime.now().isoformat()
+
             
             return self.active_sessions[session_id]
     
@@ -126,7 +119,7 @@ class SimplifiedCoordinator:
             'type': 'system_response',
             'response': response.get('response', ''),
             'form_html': response.get('form_html', ''),
-            'agent': response.get('current_agent', 'Unknown')
+            'agent': 'TireAgent'
         })
         
         # Update session
@@ -144,16 +137,10 @@ class SimplifiedCoordinator:
         """
         return {
             "response": f"I apologize, but I encountered an error: {error_message}. Please try again.",
-            "conversation_text": f"I apologize, but I encountered an error: {error_message}. Please try again.",
             "form_html": "",
-            "enhanced_notepad": "",
-
-            "current_agent": "UnifiedTireAgent",
-            "agent_display_name": "Tire Sales Assistant",
+            "ai_notepad": "",
             "coordinator_info": {
-                "current_step": "error",
-                "agent_type": "unified_system",
-                "error": error_message
+                "current_step": "error"
             }
         }
     
@@ -163,13 +150,7 @@ class SimplifiedCoordinator:
         """
         session = self.active_sessions.get(session_id, {})
         return {
-            'session_id': session_id,
-            'created_at': session.get('created_at'),
-            'last_activity': session.get('last_activity'),
-            'conversation_count': len(session.get('conversation_history', [])),
-            'current_step': session.get('current_step', 'unknown'),
-            'ai_notepad': session.get('ai_notepad', ''),
-            'agent_type': 'unified_system'
+            'ai_notepad': session.get('ai_notepad', '')
         }
     
 
@@ -180,7 +161,5 @@ class SimplifiedCoordinator:
         """
         return {
             'active_sessions': len(self.active_sessions),
-            'agent_type': 'unified_system',
-            'unified_agent_active': True,
-            'system_status': 'operational'
+            'system_health': 'operational'
         } 

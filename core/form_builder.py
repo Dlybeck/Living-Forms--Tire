@@ -1,5 +1,5 @@
 """
-Simplified Form Builder
+Form Builder
 Generates HTML form fields with clean, maintainable code
 """
 
@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 class FormBuilder:
     """
-    Simplified form builder that generates HTML form fields
+    Form builder that generates HTML form fields
     """
     
     def __init__(self):
@@ -128,7 +128,7 @@ class FormBuilder:
         """Create a complete form with all fields"""
         fields_content = "".join(fields_html)
         
-        # Add additional notes field automatically
+        # Auto-add additional notes field
         additional_notes = self.create_textarea_field(
             name="additional_notes",
             label="Additional Thoughts (Optional)",
@@ -154,7 +154,7 @@ class FormBuilder:
         """Create a form with conversation text and form fields embedded within it"""
         import re
         
-        # Add additional notes field automatically
+        # Auto-add additional notes field
         additional_notes = self.create_textarea_field(
             name="additional_notes",
             label="Additional Thoughts (Optional)",
@@ -488,6 +488,23 @@ class FormBuilder:
         
         return errors
     
-    def reset_field_count(self):
-        """Reset field counter"""
-        self.field_count = 0 
+    def get_function_documentation(self) -> str:
+        """Get documentation for available form builder functions"""
+        return """
+Available form builder functions:
+
+create_text_field(name, label, required=False, placeholder=None, help_text=None)
+- Creates a single-line text input field
+
+create_textarea_field(name, label, required=False, placeholder=None, rows=3, help_text=None)
+- Creates a multi-line textarea field
+
+create_select_field(name, label, options=[], required=False, help_text=None)
+- Creates a dropdown select field with options
+
+create_checkbox_field(name, label, options=[], required=False, help_text=None)
+- Creates a checkbox field with multiple options
+
+create_year_field(name, label, required=False, help_text=None)
+- Creates a year input field with appropriate placeholder
+""" 

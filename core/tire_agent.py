@@ -1,6 +1,6 @@
 """
 Unified Tire Sales Assistant Agent
-Combines internal thinking process (like Scribe) with user interaction and form generation
+Combines internal thinking process with user interaction and form generation
 """
 
 import re
@@ -9,44 +9,43 @@ from typing import Dict, Any, Optional, Tuple
 from .ai_client import AIClient, ModelType
 
 from .form_builder import FormBuilder
-from .function_call_parser import FunctionCallParser
+
 from config.prompt import prompt
 
 logger = logging.getLogger(__name__)
 
-class UnifiedTireAgent:
+class TireAgent:
     """
-    Unified Tire Sales Assistant Agent
+    Tire Sales Assistant Agent
     Combines internal thinking process with user interaction and form generation
     """
     
     def __init__(self, ai_client: AIClient, form_builder: FormBuilder):
         self.ai_client = ai_client
         self.form_builder = form_builder
-        self.function_parser = FunctionCallParser()
-        self.agent_name = "UnifiedTireAgent"
+
+        self.agent_name = "TireAgent"
         
         logger.debug(f"Initialized {self.agent_name}")
     
     def get_agent_prompt(self) -> str:
         return prompt
     
-    def _get_agent_display_name(self) -> str:
-        return "Tire Sales Assistant"
+
     
     async def process_message(self, 
                             user_message: str, 
-                            roadmap: Dict[str, Any],
+                            session_data: Dict[str, Any],
                             conversation_context: Dict[str, Any]) -> Dict[str, Any]:
         """
         Process a message with internal thinking and external response generation
         """
         try:
             # Build comprehensive context including conversation history
-            enhanced_context = await self._build_enhanced_context(user_message, roadmap, conversation_context)
+            enhanced_context = await self._build_enhanced_context(user_message, session_data, conversation_context)
             
             # Generate response with internal thinking and external output
-            response = await self._generate_unified_response(user_message, roadmap, enhanced_context)
+            response = await self._generate_unified_response(user_message, session_data, enhanced_context)
             
             # Extract internal analysis and external components
             response_text = response.get("text", "")
@@ -56,32 +55,28 @@ class UnifiedTireAgent:
             
             logger.debug(f"Parsed - Internal: {len(internal_analysis)} chars, Conversation: {len(conversation_text)} chars, Form: {len(form_html)} chars")
             
-            # Update roadmap with internal analysis (like Scribe did)
+            # Update session data with internal analysis
             if internal_analysis:
-                roadmap['ai_notepad'] = internal_analysis
+                session_data['ai_notepad'] = internal_analysis
             
 
             
             return {
                 "response": conversation_text,
-                "conversation_text": conversation_text,
                 "form_html": form_html,
-                "enhanced_notepad": internal_analysis,
-
-                "current_agent": self.agent_name,
-                "agent_display_name": self._get_agent_display_name()
+                "ai_notepad": internal_analysis
             }
             
         except Exception as e:
-            logger.error(f"Error in UnifiedTireAgent: {str(e)}")
+            logger.error(f"Error in TireAgent: {str(e)}")
             return self._create_error_response(str(e))
     
-    async def _build_enhanced_context(self, user_message: str, roadmap: Dict[str, Any], conversation_context: Dict[str, Any]) -> Dict[str, Any]:
+    async def _build_enhanced_context(self, user_message: str, session_data: Dict[str, Any], conversation_context: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Build enhanced context including conversation history and current state
+        Build comprehensive context including conversation history and current state
         """
         # Get current notepad
-        current_notepad = roadmap.get('ai_notepad', '')
+        current_notepad = session_data.get('ai_notepad', '')
         
         # Build form data analysis
         form_data = conversation_context.get('form_data', {})
@@ -137,7 +132,7 @@ User Form Choices:
         
         return enhanced_context
     
-    async def _generate_unified_response(self, user_message: str, roadmap: Dict[str, Any], enhanced_context: Dict[str, Any]) -> Dict[str, Any]:
+    async def _generate_unified_response(self, user_message: str, session_data: Dict[str, Any], enhanced_context: Dict[str, Any]) -> Dict[str, Any]:
         """
         Generate unified response with internal thinking and external output
         """
@@ -170,8 +165,8 @@ Remember to:
             conversation_context=enhanced_context,
             model_type=ModelType.O4_MINI,  # Use O4-mini for better reasoning
             agent_prompt=self.get_agent_prompt(),
-            response_format="function_calls_and_chat",
-            function_documentation=self.function_parser.get_function_documentation()
+
+            function_documentation=self.form_builder.get_function_documentation()
         )
         
 
@@ -200,12 +195,7 @@ Remember to:
         if conversation_text and re.search(r'\{[^}]+\}', conversation_text):
             logger.debug("Found embedded function calls in conversation text, using embedded form method")
             form_html = self.form_builder.create_embedded_form(conversation_text)
-        else:
-            # Only use function call parser if no embedded calls found
-            conversation_text_from_form, form_html = self.function_parser.parse_function_calls(conversation_text)
-            # If no conversation text was extracted from the conversation section, use the one from form parsing
-            if not conversation_text and conversation_text_from_form:
-                conversation_text = conversation_text_from_form
+
         
         # If no sections were found, treat the entire response as conversation text
         if not internal_analysis and not conversation_text:
@@ -214,22 +204,14 @@ Remember to:
             # Check if the conversation text contains embedded function calls
             if re.search(r'\{[^}]+\}', conversation_text):
                 form_html = self.form_builder.create_embedded_form(conversation_text)
-            else:
-                # Try to parse function calls from the entire response
-                conversation_text_from_form, form_html = self.function_parser.parse_function_calls(conversation_text)
-                if conversation_text_from_form:
-                    conversation_text = conversation_text_from_form
+
         
         return internal_analysis, conversation_text, form_html 
     
     def _create_error_response(self, error_message: str) -> Dict[str, Any]:
-        """Create an error response"""
+        """Create a standardized error response"""
         return {
             "response": "I'm experiencing some technical difficulties. Please try again.",
-            "conversation_text": "I'm experiencing some technical difficulties. Please try again.",
             "form_html": "",
-            "enhanced_notepad": "",
-
-            "current_agent": self.agent_name,
-            "agent_display_name": "Tire Sales Assistant"
+            "ai_notepad": ""
         } 
