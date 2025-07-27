@@ -64,9 +64,6 @@ async def chat_endpoint(chat_request: ChatMessage):
             form_data=chat_request.form_data
         )
         
-        # Get session info for response
-        session_info = await coordinator.get_session_info(chat_request.session_id)
-        
         # Create response
         chat_response = ChatResponse(
             response=response_data.get("response") or "",

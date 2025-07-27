@@ -108,39 +108,9 @@ class AIClient:
     
     def _format_conversation_context(self, conversation_context: Dict[str, Any]) -> str:
         """Format conversation context for the AI"""
-        context_parts = []
-        
-        # Debug logging
-        logger.debug(f"Formatting conversation context")
-        
-        # Add current goal if available
-        if 'current_goal' in conversation_context:
-            context_parts.append(f"Current Goal: {conversation_context['current_goal']}")
-        
-        # Add current step if available
-        if 'current_step' in conversation_context:
-            context_parts.append(f"Current Step: {conversation_context['current_step']}")
-        
-        # Add form data if present (for immediate context)
-        if 'form_data' in conversation_context:
-            form_data = conversation_context['form_data']
-            if form_data:
-                # Show what the user answered in the form
-                answers = []
-                for field, value in form_data.items():
-                    if field not in ['additional_notes']:  # Skip auto-added fields
-                        answers.append(f"{field}: {value}")
-                if answers:
-                    context_parts.append(f"Form Data: {', '.join(answers)}")
-        
-        # Add notepad information if available
-        if 'ai_notepad' in conversation_context:
-            context_parts.append(f"AI Notepad:\n{conversation_context['ai_notepad']}")
-        
-        formatted_context = "Context:\n" + "\n".join(f"- {part}" for part in context_parts) if context_parts else ""
-        logger.debug(f"Formatted context")
-        
-        return formatted_context
+        # The context is already formatted in the tire agent's prompt
+        # This method is kept for compatibility but simplified
+        return ""
     
     async def _call_openai_api(self, prompt: str, model_config: Dict[str, Any]) -> Dict[str, Any]:
         """Call OpenAI API"""

@@ -120,7 +120,7 @@ class FormBuilder:
             name=name,
             label=label or "Year",
             required=required,
-            placeholder="e.g., 2020",
+            placeholder="e.g., 2019",
             help_text=help_text or "Enter the year of your vehicle"
         )
     
@@ -131,7 +131,7 @@ class FormBuilder:
         # Auto-add additional notes field
         additional_notes = self.create_textarea_field(
             name="additional_notes",
-            label="Additional Thoughts (Optional)",
+            label="Any Other Thoughts? (Optional)",
             required=False,
             placeholder="Ask a question, add details, or tell me anything...",
             skip_additional_notes_check=True

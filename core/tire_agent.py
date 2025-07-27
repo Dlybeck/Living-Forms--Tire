@@ -7,9 +7,8 @@ import re
 import logging
 from typing import Dict, Any, Optional, Tuple
 from .ai_client import AIClient, ModelType
-
 from .form_builder import FormBuilder
-
+from .utils import create_error_response
 from config.prompt import prompt
 
 logger = logging.getLogger(__name__)
@@ -35,17 +34,13 @@ class TireAgent:
     
     async def process_message(self, 
                             user_message: str, 
-                            session_data: Dict[str, Any],
-                            conversation_context: Dict[str, Any]) -> Dict[str, Any]:
+                            context: Dict[str, Any]) -> Dict[str, Any]:
         """
         Process a message with internal thinking and external response generation
         """
         try:
-            # Build comprehensive context including conversation history
-            enhanced_context = await self._build_enhanced_context(user_message, session_data, conversation_context)
-            
             # Generate response with internal thinking and external output
-            response = await self._generate_unified_response(user_message, session_data, enhanced_context)
+            response = await self._generate_unified_response(user_message, context)
             
             # Extract internal analysis and external components
             response_text = response.get("text", "")
@@ -55,117 +50,56 @@ class TireAgent:
             
             logger.debug(f"Parsed - Internal: {len(internal_analysis)} chars, Conversation: {len(conversation_text)} chars, Form: {len(form_html)} chars")
             
-            # Update session data with internal analysis
+            # Update context with internal analysis
             if internal_analysis:
-                session_data['ai_notepad'] = internal_analysis
+                context['ai_notepad'] = internal_analysis
             
 
             
             return {
                 "response": conversation_text,
                 "form_html": form_html,
-                "ai_notepad": internal_analysis
+                "ai_notepad": context.get('ai_notepad', internal_analysis)
             }
             
         except Exception as e:
             logger.error(f"Error in TireAgent: {str(e)}")
-            return self._create_error_response(str(e))
+            return create_error_response(str(e))
     
-    async def _build_enhanced_context(self, user_message: str, session_data: Dict[str, Any], conversation_context: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Build comprehensive context including conversation history and current state
-        """
-        # Get current notepad
-        current_notepad = session_data.get('ai_notepad', '')
-        
-        # Build form data analysis
-        form_data = conversation_context.get('form_data', {})
-        form_analysis = ""
-        if form_data:
-            user_choices = []
-            for key, value in form_data.items():
-                if key not in ['_context'] and value and str(value).lower() not in ['false', 'none', '']:
-                    if isinstance(value, list):
-                        user_choices.extend([f"{key}: {v}" for v in value if v])
-                    else:
-                        user_choices.append(f"{key}: {value}")
-            
-            if user_choices:
-                form_analysis = f"""
-User Form Choices:
-{chr(10).join([f"- {choice}" for choice in user_choices])}
-"""
-        
-        # Build conversation history analysis
-        conversation_history = conversation_context.get('conversation_history', [])
-        conversation_flow = ""
-        if conversation_history:
-            recent_interactions = conversation_history[-5:]  # Last 5 interactions
-            conversation_flow = "Recent Conversation Flow:\n"
-            for interaction in recent_interactions:
-                if interaction.get('type') == 'form_submission':
-                    flow_data = interaction.get('form_data', {})
-                    if flow_data.get('_context', {}).get('is_initial_form'):
-                        conversation_flow += f"- User initially selected: {flow_data['_context']['selected_label']}\n"
-                    else:
-                        choices = []
-                        for key, value in flow_data.items():
-                            if key not in ['_context'] and value and str(value).lower() not in ['false', 'none', '']:
-                                choices.append(f"{key}: {value}")
-                        if choices:
-                            conversation_flow += f"- User form choices: {', '.join(choices)}\n"
-                else:
-                    conversation_flow += f"- User message: {interaction.get('message', '')}\n"
-        
-        # Build enhanced context
-        enhanced_context = {
-            "current_notepad": current_notepad,
-            "user_message": user_message,
-            "form_data": form_data,
-            "form_analysis": form_analysis,
-            "conversation_history": conversation_history,
-            "conversation_flow": conversation_flow,
-            "current_step": conversation_context.get('current_step', 'unknown'),
-            "needs_form": True,
-            "current_goal": "Find the right tires for the user's vehicle"
-        }
-        
-        return enhanced_context
+
     
-    async def _generate_unified_response(self, user_message: str, session_data: Dict[str, Any], enhanced_context: Dict[str, Any]) -> Dict[str, Any]:
+    async def _generate_unified_response(self, user_message: str, context: Dict[str, Any]) -> Dict[str, Any]:
         """
         Generate unified response with internal thinking and external output
         """
         # Build the unified prompt
         unified_prompt = f"""
-Current AI Notepad:
-{enhanced_context.get('current_notepad', '')}
+            Current AI Notepad:
+            {context.get('ai_notepad', '')}
 
-User Message: {user_message}
+            User Message: {user_message}
 
-Form Data: {enhanced_context.get('form_data', {})}
-{enhanced_context.get('form_analysis', '')}
+            Form Data: {context.get('form_data', {})}
 
-Conversation Context:
-- Current Step: {enhanced_context.get('current_step', 'unknown')}
-- Conversation Flow: {enhanced_context.get('conversation_flow', '')}
+            Conversation Context:
+            - Current Step: {context.get('current_step', 'unknown')}
+            - Conversation History: {len(context.get('conversation_history', []))} interactions
 
-Please complete your internal thinking process and generate your response following the exact format specified in your prompt.
+            Please complete your internal thinking process and generate your response following the exact format specified in your prompt.
 
-Remember to:
-1. Complete your "Living Form's Mind: Riley's Head" internal analysis
-2. Generate conversational response for the user
-3. Generate appropriate form fields if needed
-4. Use the exact output format: [INTERNAL_ANALYSIS], [CONVERSATION], [FORM]
-"""
+            Remember to:
+            1. Complete your "Living Form's Mind: Riley's Head" internal analysis
+            2. Generate conversational response for the user
+            3. Generate appropriate form fields if needed
+            4. Use the exact output format: [INTERNAL_ANALYSIS], [CONVERSATION], [FORM]
+        """
         
         # Use O4-mini for better reasoning and analysis
         response = await self.ai_client.generate_response(
             user_message=unified_prompt,
-            conversation_context=enhanced_context,
+            conversation_context=context,
             model_type=ModelType.O4_MINI,  # Use O4-mini for better reasoning
             agent_prompt=self.get_agent_prompt(),
-
             function_documentation=self.form_builder.get_function_documentation()
         )
         
@@ -207,11 +141,3 @@ Remember to:
 
         
         return internal_analysis, conversation_text, form_html 
-    
-    def _create_error_response(self, error_message: str) -> Dict[str, Any]:
-        """Create a standardized error response"""
-        return {
-            "response": "I'm experiencing some technical difficulties. Please try again.",
-            "form_html": "",
-            "ai_notepad": ""
-        } 
