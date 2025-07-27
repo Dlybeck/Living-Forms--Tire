@@ -202,17 +202,19 @@ class ProfessionalTireFormsApp {
     markFormCompleted(form, formData) {
         form.dataset.disabled = 'true';
         
-        // Fill in values and disable inputs
-        for (const [key, value] of Object.entries(formData)) {
-            if (typeof value === 'string' && value.trim()) {
-                const input = form.querySelector(`[name="${key}"]`);
-                if (input) {
-                    input.value = value;
-                    input.disabled = true;
-                    input.style.background = '#f8f9fa';
-                }
+        // Disable ALL form inputs regardless of content
+        const allInputs = form.querySelectorAll('input, textarea, select');
+        allInputs.forEach(input => {
+            // Fill in the value if it exists in formData
+            const fieldName = input.name;
+            if (fieldName && formData[fieldName] !== undefined) {
+                input.value = formData[fieldName];
             }
-        }
+            
+            // Disable the input
+            input.disabled = true;
+            input.style.background = '#f8f9fa';
+        });
         
         // Disable submit button
         const submitButton = form.querySelector('button[type="submit"]');
@@ -356,8 +358,8 @@ class ProfessionalTireFormsApp {
             timestamp: new Date()
         });
         
-        // Scroll to new section
-        this.scrollToBottom();
+        // Scroll to the new form (which is at the bottom)
+        this.scrollToNewForm();
     }
 
     showLoading() {
@@ -406,6 +408,14 @@ class ProfessionalTireFormsApp {
 
     scrollToBottom() {
         // Smooth scroll to bottom of form workspace
+        this.formWorkspace.scrollTo({
+            top: this.formWorkspace.scrollHeight,
+            behavior: 'smooth'
+        });
+    }
+
+    scrollToNewForm() {
+        // Smooth scroll to the newly added form (which is at the bottom)
         this.formWorkspace.scrollTo({
             top: this.formWorkspace.scrollHeight,
             behavior: 'smooth'
