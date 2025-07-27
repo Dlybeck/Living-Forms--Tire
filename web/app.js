@@ -359,7 +359,7 @@ class ProfessionalTireFormsApp {
         });
         
         // Scroll to the new form (which is at the bottom)
-        this.scrollToNewForm();
+        this.scrollToBottom();
     }
 
     showLoading() {
@@ -408,14 +408,6 @@ class ProfessionalTireFormsApp {
 
     scrollToBottom() {
         // Smooth scroll to bottom of form workspace
-        this.formWorkspace.scrollTo({
-            top: this.formWorkspace.scrollHeight,
-            behavior: 'smooth'
-        });
-    }
-
-    scrollToNewForm() {
-        // Smooth scroll to the newly added form (which is at the bottom)
         this.formWorkspace.scrollTo({
             top: this.formWorkspace.scrollHeight,
             behavior: 'smooth'

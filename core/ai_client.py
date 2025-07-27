@@ -58,13 +58,8 @@ class AIClient:
             # Get model configuration
             model_config = self.model_mappings[model_type]
             
-            # Make API call based on provider
-            if model_config['provider'] == 'openai':
-                response = await self._call_openai_api(prompt, model_config)
-            elif model_config['provider'] == 'anthropic':
-                response = await self._call_anthropic_api(prompt, model_config)
-            else:
-                raise ValueError(f"Unsupported provider: {model_config['provider']}")
+            # Make API call using unified method
+            response = await self._call_api(prompt, model_config, model_config['provider'])
             
             return {
                 'text': response['text'],
@@ -112,68 +107,68 @@ class AIClient:
         # This method is kept for compatibility but simplified
         return ""
     
-    async def _call_openai_api(self, prompt: str, model_config: Dict[str, Any]) -> Dict[str, Any]:
-        """Call OpenAI API"""
-        headers = {
-            'Authorization': f'Bearer {self.api_keys["openai"]}',
-            'Content-Type': 'application/json'
-        }
+    async def _call_api(self, prompt: str, model_config: Dict[str, Any], provider: str) -> Dict[str, Any]:
+        """Call API for the specified provider"""
         
-        data = {
-            'model': model_config['model_name'],
-            'messages': [
-                {'role': 'system', 'content': prompt}
-            ]
-        }
-        
-        # Handle different token parameter names for different models
-        if 'max_completion_tokens' in model_config:
-            data['max_completion_tokens'] = model_config['max_completion_tokens']
+        if provider == 'openai':
+            headers = {
+                'Authorization': f'Bearer {self.api_keys["openai"]}',
+                'Content-Type': 'application/json'
+            }
+            
+            data = {
+                'model': model_config['model_name'],
+                'messages': [
+                    {'role': 'system', 'content': prompt}
+                ]
+            }
+            
+            # Handle different token parameter names for different models
+            if 'max_completion_tokens' in model_config:
+                data['max_completion_tokens'] = model_config['max_completion_tokens']
+            else:
+                data['max_tokens'] = model_config['max_tokens']
+            
+            # Only add temperature for models that support it (not O4-mini)
+            if not model_config['model_name'].startswith('o4-'):
+                data['temperature'] = 0.7
+                
+        elif provider == 'anthropic':
+            headers = {
+                'x-api-key': self.api_keys['anthropic'],
+                'Content-Type': 'application/json',
+                'anthropic-version': '2023-06-01'
+            }
+            
+            data = {
+                'model': model_config['model_name'],
+                'max_tokens': model_config['max_tokens'],
+                'messages': [
+                    {'role': 'user', 'content': prompt}
+                ]
+            }
         else:
-            data['max_tokens'] = model_config['max_tokens']
+            raise ValueError(f"Unsupported provider: {provider}")
         
-        # Only add temperature for models that support it (not O4-mini)
-        if not model_config['model_name'].startswith('o4-'):
-            data['temperature'] = 0.7
-        
+        # Make the API call
         async with aiohttp.ClientSession() as session:
-            async with session.post(self.base_urls['openai'], headers=headers, json=data) as response:
+            async with session.post(self.base_urls[provider], headers=headers, json=data) as response:
                 if response.status == 200:
                     result = await response.json()
-                    return {
-                        'text': result['choices'][0]['message']['content'],
-                        'usage': result['usage']
-                    }
+                    
+                    # Extract response based on provider
+                    if provider == 'openai':
+                        return {
+                            'text': result['choices'][0]['message']['content'],
+                            'usage': result['usage']
+                        }
+                    else:  # anthropic
+                        return {
+                            'text': result['content'][0]['text'],
+                            'usage': result.get('usage', {'prompt_tokens': 0, 'completion_tokens': 0, 'total_tokens': 0})
+                        }
                 else:
                     error_text = await response.text()
-                    raise Exception(f"OpenAI API error: {response.status} - {error_text}")
-    
-    async def _call_anthropic_api(self, prompt: str, model_config: Dict[str, Any]) -> Dict[str, Any]:
-        """Call Anthropic API"""
-        headers = {
-            'x-api-key': self.api_keys['anthropic'],
-            'Content-Type': 'application/json',
-            'anthropic-version': '2023-06-01'
-        }
-        
-        data = {
-            'model': model_config['model_name'],
-            'max_tokens': model_config['max_tokens'],
-            'messages': [
-                {'role': 'user', 'content': prompt}
-            ]
-        }
-        
-        async with aiohttp.ClientSession() as session:
-            async with session.post(self.base_urls['anthropic'], headers=headers, json=data) as response:
-                if response.status == 200:
-                    result = await response.json()
-                    return {
-                        'text': result['content'][0]['text'],
-                        'usage': result.get('usage', {'prompt_tokens': 0, 'completion_tokens': 0, 'total_tokens': 0})
-                    }
-                else:
-                    error_text = await response.text()
-                    raise Exception(f"Anthropic API error: {response.status} - {error_text}")
+                    raise Exception(f"{provider.title()} API error: {response.status} - {error_text}")
     
  
