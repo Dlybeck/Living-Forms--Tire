@@ -15,10 +15,7 @@ logging.basicConfig(level=logging.WARNING)
 logger = logging.getLogger(__name__)
 
 # Import our modules
-from core.coordinator import Coordinator
-from core.ai_client import AIClient, ModelType
-
-from core.form_builder import FormBuilder
+from core.simplified_coordinator import SimplifiedCoordinator
 
 app = FastAPI(title="Living Form Tire Sales Agent", version="1.0.0")
 
@@ -29,9 +26,7 @@ templates = Jinja2Templates(directory="web")
 app.mount("/static", StaticFiles(directory="web"), name="static")
 
 # Initialize components
-ai_client = AIClient()
-form_builder = FormBuilder()
-coordinator = Coordinator(ai_client, form_builder)
+coordinator = SimplifiedCoordinator()
 
 # Request/Response models
 class ChatMessage(BaseModel):
@@ -68,7 +63,7 @@ async def chat_endpoint(chat_request: ChatMessage):
         chat_response = ChatResponse(
             response=response_data.get("response") or "",
             form_html=response_data.get("form_html"),
-            conversation_state=response_data.get("coordinator_info", {}).get("current_step", "unknown"),
+            conversation_state=response_data.get("coordinator_info", {}).get("type", "unknown"),
             session_id=chat_request.session_id,
             notepad_content=response_data.get("ai_notepad", "")
         )
@@ -100,8 +95,9 @@ async def health_check():
     return {
         "status": "healthy",
         "timestamp": datetime.now().isoformat(),
-        "active_sessions": system_status.get("active_sessions", 0),
-        "system_health": system_status.get("system_health", "unknown")
+        "coordinator_type": system_status.get("coordinator_type", "unknown"),
+        "ai_client_status": system_status.get("ai_client_status", "unknown"),
+        "form_builder_status": system_status.get("form_builder_status", "unknown")
     }
 
 

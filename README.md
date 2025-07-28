@@ -1,6 +1,15 @@
-# 🚗 Tire Sales Assistant
+# 🚗 Living Form Tire Sales Agent
 
-An intelligent AI tire sales assistant that uses dynamic forms and natural conversation to help users find the perfect tires.
+An intelligent AI tire sales assistant that uses dynamic forms and natural conversation to help users find the perfect tires, built with LangChain for robust AI interactions.
+
+## 🏗️ Architecture
+
+This application uses LangChain components for simplified, maintainable AI interactions:
+
+- **LangChain Memory**: Automatic conversation history management
+- **LangChain Chains**: Structured prompt templates and response generation  
+- **LangChain Output Parsers**: Structured response parsing with fallback
+- **LangChain Models**: Unified interface for multiple AI providers
 
 ## 🚀 Quick Start
 
@@ -47,12 +56,12 @@ An intelligent AI tire sales assistant that uses dynamic forms and natural conve
 Tires/
 ├── main.py                    # FastAPI application
 ├── core/                      # Core business logic
-│   ├── ai_client.py          # AI service client
-
+│   ├── ai_client.py          # AI service client (LangChain models)
 │   ├── form_builder.py       # Form generation
-│   ├── function_call_parser.py # AI response parsing
-│   ├── simplified_coordinator.py # Main coordinator
-│   └── unified_tire_agent.py # AI agent logic
+│   ├── simplified_coordinator.py # Main coordinator (LangChain-based)
+│   ├── tire_chain.py         # LangChain chain for tire logic
+│   ├── memory_manager.py     # LangChain memory management
+│   └── output_parser.py      # LangChain output parsing
 ├── config/                    # Configuration
 │   └── prompt.py             # AI system prompt
 ├── web/                       # Web assets
@@ -66,8 +75,9 @@ Tires/
 - **Natural Conversation**: Talk to the AI like a knowledgeable tire salesperson
 - **Dynamic Forms**: Interactive forms that adapt to the conversation
 - **Smart Guidance**: AI helps users who don't know their vehicle details
-
-- **Session Memory**: Remembers conversation context and user preferences
+- **Session Memory**: Automatic conversation history management with LangChain
+- **Structured Output**: Reliable response parsing with fallback mechanisms
+- **Simplified Architecture**: Reduced complexity with LangChain components
 
 ## 🔧 Development
 
@@ -92,9 +102,10 @@ uvicorn main:app --reload --host localhost --port 8000
 ## 🧠 How It Works
 
 1. **User Interaction**: User submits a form or sends a message
-2. **AI Processing**: AI analyzes context and generates response with form elements
-3. **Form Generation**: Dynamic forms are created based on conversation needs
-4. **Response Delivery**: User receives conversational text with interactive forms
-5. **State Update**: System remembers context for next interaction
+2. **LangChain Processing**: AI analyzes context using LangChain chains and memory
+3. **Structured Output**: Response is parsed using LangChain output parsers
+4. **Form Generation**: Dynamic forms are created from embedded function calls
+5. **Response Delivery**: User receives conversational text with interactive forms
+6. **Memory Update**: LangChain automatically manages conversation history
 
-The AI uses function calls to generate forms, ensuring reliable and consistent user experience.
+The system uses LangChain components for reliable, maintainable AI interactions with automatic memory management and structured output parsing.
