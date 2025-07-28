@@ -14,8 +14,8 @@ load_dotenv()
 logging.basicConfig(level=logging.WARNING)
 logger = logging.getLogger(__name__)
 
-# Import our modules
-from core.simplified_coordinator import SimplifiedCoordinator
+# Import coordinator
+from core.graph_coordinator import GraphCoordinator
 
 app = FastAPI(title="Living Form Tire Sales Agent", version="1.0.0")
 
@@ -26,7 +26,9 @@ templates = Jinja2Templates(directory="web")
 app.mount("/static", StaticFiles(directory="web"), name="static")
 
 # Initialize components
-coordinator = SimplifiedCoordinator()
+# Using LangGraph workflow for step-by-step tire recommendations
+coordinator = GraphCoordinator(use_claude=False)  # Use O4-mini (more reliable)
+logger.info("Using LangGraph workflow coordinator with O4-mini")
 
 # Request/Response models
 class ChatMessage(BaseModel):
@@ -92,13 +94,20 @@ async def get_session_notepad(session_id: str):
 async def health_check():
     """Health check endpoint"""
     system_status = await coordinator.get_system_status()
-    return {
+    
+    response = {
         "status": "healthy",
         "timestamp": datetime.now().isoformat(),
         "coordinator_type": system_status.get("coordinator_type", "unknown"),
         "ai_client_status": system_status.get("ai_client_status", "unknown"),
         "form_builder_status": system_status.get("form_builder_status", "unknown")
     }
+    
+    # Add graph-specific info if using graph coordinator
+    if hasattr(coordinator, 'get_workflow_info'):
+        response["workflow_info"] = coordinator.get_workflow_info()
+    
+    return response
 
 
 
