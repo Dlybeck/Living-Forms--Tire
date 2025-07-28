@@ -1,9 +1,12 @@
 import os
 import logging
-
 from typing import Dict, Optional, Any
 from enum import Enum
-import aiohttp
+
+# LangChain imports
+from langchain_openai import ChatOpenAI
+from langchain_anthropic import ChatAnthropic
+from langchain_core.messages import HumanMessage, SystemMessage
 
 logger = logging.getLogger(__name__)
 
@@ -15,18 +18,13 @@ class ModelType(Enum):
 class AIClient:
     """
     AI client for the Living Form Tire Sales Assistant
-    Handles communication with AI models
+    Handles communication with AI models using LangChain
     """
     
     def __init__(self):
         self.api_keys = {
             'openai': os.getenv('OPENAI_API_KEY'),
             'anthropic': os.getenv('ANTHROPIC_API_KEY')
-        }
-        
-        self.base_urls = {
-            'openai': 'https://api.openai.com/v1/chat/completions',
-            'anthropic': 'https://api.anthropic.com/v1/messages'
         }
         
         # Model mappings for core functionality
@@ -43,29 +41,97 @@ class AIClient:
             }
         }
         
-        logger.debug("AI Client initialized with core model set")
+        # Initialize LangChain models
+        self._init_langchain_models()
+        
+        logger.debug("AI Client initialized with LangChain models")
+    
+    def _init_langchain_models(self):
+        """Initialize LangChain model instances"""
+        self.langchain_models = {}
+        
+        # Initialize OpenAI models - O4-mini has very limited parameters
+        if self.api_keys['openai']:
+            try:
+                print("[DEBUG] Instantiating O4-mini with:", {
+                    "api_key": self.api_keys['openai'],
+                    "model": "o4-mini-2025-04-16",
+                    "temperature": 1,
+                    "model_kwargs": {"max_completion_tokens": 4096}
+                })
+                self.langchain_models['openai'] = ChatOpenAI(
+                    api_key=self.api_keys['openai'],
+                    model="o4-mini-2025-04-16",
+                    temperature=1,
+                    model_kwargs={
+                        "max_completion_tokens": 4096
+                    }
+                )
+                logger.debug("OpenAI O4-mini model initialized successfully")
+            except Exception as e:
+                logger.error(f"Failed to initialize OpenAI model: {e}")
+        
+        # Initialize Anthropic models
+        if self.api_keys['anthropic']:
+            try:
+                print("[DEBUG] Instantiating Claude with:", {
+                    "api_key": self.api_keys['anthropic'],
+                    "model": "claude-3-5-sonnet-latest",
+                    "max_tokens": 4096,
+                    "temperature": 0.7
+                })
+                self.langchain_models['anthropic'] = ChatAnthropic(
+                    api_key=self.api_keys['anthropic'],
+                    model="claude-3-5-sonnet-latest",
+                    max_tokens=4096,
+                    temperature=0.7
+                )
+                logger.debug("Anthropic Claude model initialized successfully")
+            except Exception as e:
+                logger.error(f"Failed to initialize Anthropic model: {e}")
     
     async def generate_response(self, user_message: str, conversation_context: Dict[str, Any], 
                               model_type: ModelType, agent_prompt: str, 
                               function_documentation: Optional[str] = None) -> Dict[str, Any]:
         """
-        Generate AI response using specified model
+        Generate AI response using specified model via LangChain
         """
         try:
+            # Get model configuration
+            model_config = self.model_mappings[model_type]
+            provider = model_config['provider']
+            print(f"[DEBUG] Using model_type: {model_type}, provider: {provider}")
+            
+            # Get the appropriate LangChain model
+            llm = self.langchain_models.get(provider)
+            if not llm:
+                raise ValueError(f"No LangChain model available for provider: {provider}")
+            print(f"[DEBUG] LangChain model instance: {llm}")
+            
             # Build the prompt
             prompt = self._build_prompt(user_message, conversation_context, agent_prompt, function_documentation)
             
-            # Get model configuration
-            model_config = self.model_mappings[model_type]
+            # Create messages for LangChain
+            messages = [
+                SystemMessage(content=prompt),
+                HumanMessage(content=user_message)
+            ]
+            print(f"[DEBUG] Messages sent to model: {messages}")
             
-            # Make API call using unified method
-            response = await self._call_api(prompt, model_config, model_config['provider'])
+            # Make API call using LangChain
+            response = await llm.ainvoke(messages)
+            
+            # Extract response content
+            response_text = response.content if hasattr(response, 'content') else str(response)
+            
+            # Extract usage information if available
+            usage = self._extract_usage(response, model_config)
             
             return {
-                'text': response['text'],
-                'usage': response['usage'],
+                'text': response_text,
+                'usage': usage,
                 'model': model_type.value,
-                'provider': model_config['provider']
+                'provider': provider
             }
             
         except Exception as e:
@@ -77,6 +143,27 @@ class AIClient:
                 'model': 'fallback',
                 'provider': 'fallback'
             }
+    
+    def _extract_usage(self, response, model_config: Dict[str, Any]) -> Dict[str, int]:
+        """Extract usage information from LangChain response"""
+        try:
+            # Try to extract usage from response metadata
+            if hasattr(response, 'response_metadata') and response.response_metadata:
+                usage = response.response_metadata.get('usage', {})
+                return {
+                    'prompt_tokens': usage.get('prompt_tokens', 0),
+                    'completion_tokens': usage.get('completion_tokens', 0),
+                    'total_tokens': usage.get('total_tokens', 0)
+                }
+        except Exception as e:
+            logger.debug(f"Could not extract usage info: {e}")
+        
+        # Fallback usage info
+        return {
+            'prompt_tokens': 0,
+            'completion_tokens': 0,
+            'total_tokens': 0
+        }
     
     def _build_prompt(self, user_message: str, conversation_context: Dict[str, Any], 
                      agent_prompt: str, function_documentation: Optional[str] = None) -> str:
@@ -94,7 +181,7 @@ class AIClient:
         context_info = self._format_conversation_context(conversation_context)
         
         # Build the full prompt
-        prompt = f"{system_prompt}\n\n{context_info}\n\nUser: {user_message}\n\nAssistant:"
+        prompt = f"{system_prompt}\n\n{context_info}"
         
         logger.debug(f"Built prompt length: {len(prompt)} characters")
         logger.debug(f"Prompt ends with: {prompt[-200:]}...")
@@ -106,69 +193,5 @@ class AIClient:
         # The context is already formatted in the tire agent's prompt
         # This method is kept for compatibility but simplified
         return ""
-    
-    async def _call_api(self, prompt: str, model_config: Dict[str, Any], provider: str) -> Dict[str, Any]:
-        """Call API for the specified provider"""
-        
-        if provider == 'openai':
-            headers = {
-                'Authorization': f'Bearer {self.api_keys["openai"]}',
-                'Content-Type': 'application/json'
-            }
-            
-            data = {
-                'model': model_config['model_name'],
-                'messages': [
-                    {'role': 'system', 'content': prompt}
-                ]
-            }
-            
-            # Handle different token parameter names for different models
-            if 'max_completion_tokens' in model_config:
-                data['max_completion_tokens'] = model_config['max_completion_tokens']
-            else:
-                data['max_tokens'] = model_config['max_tokens']
-            
-            # Only add temperature for models that support it (not O4-mini)
-            if not model_config['model_name'].startswith('o4-'):
-                data['temperature'] = 0.7
-                
-        elif provider == 'anthropic':
-            headers = {
-                'x-api-key': self.api_keys['anthropic'],
-                'Content-Type': 'application/json',
-                'anthropic-version': '2023-06-01'
-            }
-            
-            data = {
-                'model': model_config['model_name'],
-                'max_tokens': model_config['max_tokens'],
-                'messages': [
-                    {'role': 'user', 'content': prompt}
-                ]
-            }
-        else:
-            raise ValueError(f"Unsupported provider: {provider}")
-        
-        # Make the API call
-        async with aiohttp.ClientSession() as session:
-            async with session.post(self.base_urls[provider], headers=headers, json=data) as response:
-                if response.status == 200:
-                    result = await response.json()
-                    
-                    # Extract response based on provider
-                    if provider == 'openai':
-                        return {
-                            'text': result['choices'][0]['message']['content'],
-                            'usage': result['usage']
-                        }
-                    else:  # anthropic
-                        return {
-                            'text': result['content'][0]['text'],
-                            'usage': result.get('usage', {'prompt_tokens': 0, 'completion_tokens': 0, 'total_tokens': 0})
-                        }
-                else:
-                    error_text = await response.text()
-                    raise Exception(f"{provider.title()} API error: {response.status} - {error_text}")
     
  

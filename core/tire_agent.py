@@ -44,7 +44,8 @@ class TireAgent:
             
             # Extract internal analysis and external components
             response_text = response.get("text", "")
-            logger.debug(f"Raw AI response: {response_text[:200]}...")
+            logger.debug(f"Raw AI response: {response_text[:500]}...")
+            logger.debug(f"Full AI response length: {len(response_text)}")
             
             internal_analysis, conversation_text, form_html = self._parse_unified_response(response_text)
             
@@ -115,21 +116,30 @@ class TireAgent:
         conversation_text = ""
         form_html = ""
         
+        logger.debug(f"Parsing response text. Looking for [INTERNAL_ANALYSIS] and [CONVERSATION] sections...")
+        
         # Extract internal analysis
         internal_match = re.search(r'\[INTERNAL_ANALYSIS\](.*?)(?=\[CONVERSATION\]|\[FORM\]|$)', response_text, re.DOTALL)
         if internal_match:
             internal_analysis = internal_match.group(1).strip()
+            logger.debug(f"Found [INTERNAL_ANALYSIS] section: {len(internal_analysis)} chars")
+        else:
+            logger.debug("No [INTERNAL_ANALYSIS] section found")
         
         # Extract conversation text
         conversation_match = re.search(r'\[CONVERSATION\](.*?)(?=\[FORM\]|$)', response_text, re.DOTALL)
         if conversation_match:
             conversation_text = conversation_match.group(1).strip()
+            logger.debug(f"Found [CONVERSATION] section: {len(conversation_text)} chars")
+        else:
+            logger.debug("No [CONVERSATION] section found")
         
         # Check if we have embedded function calls in the conversation text
         if conversation_text and re.search(r'\{[^}]+\}', conversation_text):
             logger.debug("Found embedded function calls in conversation text, using embedded form method")
             form_html = self.form_builder.create_embedded_form(conversation_text)
-
+        else:
+            logger.debug("No embedded function calls found in conversation text")
         
         # If no sections were found, treat the entire response as conversation text
         if not internal_analysis and not conversation_text:
@@ -137,7 +147,10 @@ class TireAgent:
             conversation_text = response_text.strip()
             # Check if the conversation text contains embedded function calls
             if re.search(r'\{[^}]+\}', conversation_text):
+                logger.debug("Found embedded function calls in full response text")
                 form_html = self.form_builder.create_embedded_form(conversation_text)
+            else:
+                logger.debug("No embedded function calls found in full response text")
 
         
         return internal_analysis, conversation_text, form_html 
