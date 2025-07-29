@@ -99,7 +99,14 @@ class TireTools:
         Search for vehicle specifications
         """
         try:
-            enhanced_query = f"vehicle specifications {query} dimensions weight"
+            # Make the query more specific for better results
+            if "trim" in query.lower() or "trims" in query.lower():
+                enhanced_query = f"{query} trim levels LX EX GT GT-Line specifications"
+            elif "tire size" in query.lower() or "tire" in query.lower():
+                enhanced_query = f"{query} original equipment tire size specifications"
+            else:
+                enhanced_query = f"{query} vehicle specifications trim levels dimensions"
+            
             results = self.search.run(enhanced_query)
             return f"Vehicle specifications for {query}: {results[:500]}..."
         except Exception as e:

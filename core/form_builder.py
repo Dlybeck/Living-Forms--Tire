@@ -262,18 +262,18 @@ class FormBuilder:
         return """
 Available form builder functions:
 
-create_text_field(name, label, required=False, placeholder=None, help_text=None)
-- Creates a single-line text input field
+create_text_field - Creates a single-line text input field
+Parameters: name, label, required=False, placeholder=None, help_text=None
 
-create_textarea_field(name, label, required=False, placeholder=None, rows=3, help_text=None)
-- Creates a multi-line textarea field
+create_textarea_field - Creates a multi-line textarea field  
+Parameters: name, label, required=False, placeholder=None, rows=3, help_text=None
 
-create_select_field(name, label, options=[], required=False, help_text=None)
-- Creates a dropdown select field with options
+create_select_field - Creates a dropdown select field with options
+Parameters: name, label, options=[], required=False, help_text=None
 
-create_checkbox_field(name, label, options=[], required=False, help_text=None)
-- Creates a checkbox field with multiple options
+create_checkbox_field - Creates a checkbox field with multiple options
+Parameters: name, label, options=[], required=False, help_text=None
 
-create_year_field(name, label, required=False, help_text=None)
-- Creates a year input field with appropriate placeholder
+create_year_field - Creates a year input field with appropriate placeholder
+Parameters: name, label, required=False, help_text=None
 """ 
