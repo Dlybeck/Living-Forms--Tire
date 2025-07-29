@@ -1,111 +1,63 @@
-# 🚗 Living Form Tire Sales Agent
+# Living Form Tire Sales Agent
 
-An intelligent AI tire sales assistant that uses dynamic forms and natural conversation to help users find the perfect tires, built with LangChain for robust AI interactions.
+An AI-powered conversational system that guides users through tire recommendations using dynamically generated forms and intelligent research capabilities.
 
-## 🏗️ Architecture
+## Project Structure Overview
 
-This application uses LangChain components for simplified, maintainable AI interactions:
+### Root Level Files
+- **`main.py`** - FastAPI application entry point with RESTful endpoints for chat processing, session management, and health monitoring
+- **`requirements.txt`** - Python dependencies including FastAPI, LangChain, and AI model libraries
+- **`Dockerfile`** - Container configuration for easy deployment
+- **`.dockerignore`** - Files to exclude from Docker builds
+- **`.gitignore`** - Git ignore patterns for Python projects
+- **`WORKFLOW_AND_FRAMEWORK.md`** - Comprehensive documentation of the system architecture and workflow
 
-- **LangChain Memory**: Automatic conversation history management
-- **LangChain Chains**: Structured prompt templates and response generation  
-- **LangChain Output Parsers**: Structured response parsing with fallback
-- **LangChain Models**: Unified interface for multiple AI providers
+### Core Components (`core/`)
+- **`tire_graph.py`** - LangGraph workflow implementation with 4-stage tire recommendation process
+- **`graph_coordinator.py`** - Main coordinator that manages the LangGraph workflow and AI interactions
+- **`form_builder.py`** - Dynamic HTML form generator that creates forms with embedded fields
+- **`ai_client.py`** - Multi-model AI client supporting OpenAI and Anthropic with fallback logic
+- **`tire_tools.py`** - Web search tools for vehicle specs, tire sizes, reviews, and weather conditions
+- **`memory_manager.py`** - Conversation history and session management using LangChain memory
+- **`output_parser.py`** - Parsing utilities for AI responses and form data extraction
 
-## 🚀 Quick Start
+### Configuration (`config/`)
+- **`graph_prompts.py`** - Centralized prompts for the LangGraph workflow stages
+- **`prompt.py`** - General system prompts and AI agent configurations
 
-### Prerequisites
-- Python 3.9+
-- API keys for AI models (OpenAI, Anthropic)
+### Web Interface (`web/`)
+- **`chat.html`** - Main chat interface with real-time form generation
+- **`app.js`** - Frontend JavaScript for form handling and UI updates
+- **`styles.css`** - Modern, responsive styling for the chat interface
 
-### Installation
+### Examples (`examples/`)
+- Currently empty directory for example usage and demonstrations
 
-1. **Clone and navigate to the project:**
-   ```bash
-   git clone <repository-url>
-   cd Tires
-   ```
+### Virtual Environment (`.venv/`)
+- Isolated Python environment for dependency management
 
-2. **Create virtual environment:**
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   ```
+## Quick Start
 
-3. **Install dependencies:**
-   ```bash
-   pip install -r requirements.txt
-   ```
+1. **Install Dependencies**: `pip install -r requirements.txt`
+2. **Set Environment Variables**: Add your OpenAI and/or Anthropic API keys
+3. **Run the Application**: `uvicorn main:app --host localhost --port 8000 --reload`
+4. **Access the Interface**: Open `http://localhost:8000` in your browser
 
-4. **Set up environment variables:**
-   Create a `.env` file in the project root:
-   ```bash
-   OPENAI_API_KEY=your_openai_key_here
-   ANTHROPIC_API_KEY=your_anthropic_key_here
-   ```
+## Key Features
 
-5. **Run the application:**
-   ```bash
-   uvicorn main:app --reload --host localhost --port 8000
-   ```
+- **Living Form Concept**: Dynamic form generation with embedded fields in conversational text
+- **Intelligent Research**: Proactive web search for vehicle specs and tire information
+- **Multi-Model AI**: Support for both Claude Sonnet 3.5 and O4-mini with automatic fallback
+- **LangGraph Workflow**: 4-stage process for comprehensive tire recommendations
+- **Session Management**: Conversation continuity and context preservation
+- **Responsive Design**: Mobile-friendly interface with modern styling
 
-6. **Open your browser** to `http://localhost:8000`
+## Architecture
 
-## 📁 Project Structure
+The system uses a LangGraph workflow with the following stages:
+1. **Information Analysis** - Determine what information is needed
+2. **Research Planning** - Create strategic research plan
+3. **Research Execution** - Gather information using web search tools
+4. **Response Synthesis** - Generate conversational response with forms
 
-```
-Tires/
-├── main.py                    # FastAPI application
-├── core/                      # Core business logic
-│   ├── ai_client.py          # AI service client (LangChain models)
-│   ├── form_builder.py       # Form generation
-│   ├── simplified_coordinator.py # Main coordinator (LangChain-based)
-│   ├── tire_chain.py         # LangChain chain for tire logic
-│   ├── memory_manager.py     # LangChain memory management
-│   └── output_parser.py      # LangChain output parsing
-├── config/                    # Configuration
-│   └── prompt.py             # AI system prompt
-├── web/                       # Web assets
-│   └── chat.html             # Frontend template
-├── requirements.txt           # Python dependencies
-└── Dockerfile                 # Container configuration
-```
-
-## 🎯 Key Features
-
-- **Natural Conversation**: Talk to the AI like a knowledgeable tire salesperson
-- **Dynamic Forms**: Interactive forms that adapt to the conversation
-- **Smart Guidance**: AI helps users who don't know their vehicle details
-- **Session Memory**: Automatic conversation history management with LangChain
-- **Structured Output**: Reliable response parsing with fallback mechanisms
-- **Simplified Architecture**: Reduced complexity with LangChain components
-
-## 🔧 Development
-
-### Running with Docker
-```bash
-docker build -t tire-assistant .
-docker run -p 8000:8000 --env-file .env tire-assistant
-```
-
-### Running in Development Mode
-```bash
-uvicorn main:app --reload --host localhost --port 8000
-```
-
-### API Endpoints
-- `GET /` - Main chat interface
-- `POST /chat` - Process user messages
-- `GET /health` - Health check
-- `GET /session/{session_id}/notepad` - Get session notes
-
-
-## 🧠 How It Works
-
-1. **User Interaction**: User submits a form or sends a message
-2. **LangChain Processing**: AI analyzes context using LangChain chains and memory
-3. **Structured Output**: Response is parsed using LangChain output parsers
-4. **Form Generation**: Dynamic forms are created from embedded function calls
-5. **Response Delivery**: User receives conversational text with interactive forms
-6. **Memory Update**: LangChain automatically manages conversation history
-
-The system uses LangChain components for reliable, maintainable AI interactions with automatic memory management and structured output parsing.
+For detailed architecture and workflow information, see `WORKFLOW_AND_FRAMEWORK.md`.
